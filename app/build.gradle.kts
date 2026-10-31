@@ -17,8 +17,23 @@ android {
         versionName = "0.1.0"
     }
 
+    // Publisher key lives outside the repo
+    val store = providers.gradleProperty("TEPI_STORE").orNull
+    signingConfigs {
+        if (store != null) create("tepi") {
+            storeFile = file(store)
+            storePassword = providers.gradleProperty("TEPI_STORE_PASSWORD").get()
+            keyAlias = "tepi"
+            keyPassword = providers.gradleProperty("TEPI_STORE_PASSWORD").get()
+        }
+    }
+
     buildTypes {
+        debug {
+            if (store != null) signingConfig = signingConfigs.getByName("tepi")
+        }
         release {
+            if (store != null) signingConfig = signingConfigs.getByName("tepi")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"))

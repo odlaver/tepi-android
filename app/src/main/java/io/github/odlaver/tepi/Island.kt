@@ -313,7 +313,7 @@ class Island(
 
     private fun choose() {
         val o = opened
-        if (o != null && o !== home && o !== menu && !o.live()) opened = null
+        if (o != null && o !== home && o !== menu && !o.live() && !o.keepOpen()) opened = null
         val live = scenes.filter { it.live() }.sortedByDescending { it.priority }
         val quiet = landscape || fullscreen || hiddenUntil > SystemClock.uptimeMillis()
         val shown = if (quiet) live.filter { it.priority >= URGENT } else live
@@ -431,7 +431,7 @@ class Island(
         }
         for (s in scenes) moving = s.step(dt) or moving
         val op = opened
-        if (op === home || op === menu) moving = op.step(dt) or moving
+        if (op != null && op !in scenes) moving = op.step(dt) or moving
 
         val live = kind != Kind.Hidden && (primary?.ticking() == true || second?.ticking() == true)
         // Live content at half rate

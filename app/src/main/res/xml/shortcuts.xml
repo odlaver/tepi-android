@@ -11,4 +11,26 @@
             android:targetClass="io.github.odlaver.tepi.Open"
             android:targetPackage="io.github.odlaver.tepi" />
     </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mark"
+        android:shortcutId="focus"
+        android:shortcutShortLabel="@string/shortcut_focus">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="tepi://focus"
+            android:targetClass="io.github.odlaver.tepi.Open"
+            android:targetPackage="io.github.odlaver.tepi" />
+    </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mark"
+        android:shortcutId="note"
+        android:shortcutShortLabel="@string/shortcut_note">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="tepi://note"
+            android:targetClass="io.github.odlaver.tepi.Open"
+            android:targetPackage="io.github.odlaver.tepi" />
+    </shortcut>
 </shortcuts>

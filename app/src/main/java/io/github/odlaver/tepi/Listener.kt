@@ -17,7 +17,16 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.view.Display
 import android.view.WindowManager
+import io.github.odlaver.tepi.scene.Action
+import io.github.odlaver.tepi.scene.Alert
+import io.github.odlaver.tepi.scene.AlertScene
+import io.github.odlaver.tepi.scene.Glyph
 import io.github.odlaver.tepi.scene.Message
+import io.github.odlaver.tepi.scene.NoteRow
+import io.github.odlaver.tepi.scene.PrayerRow
+import io.github.odlaver.tepi.scene.ShelfRow
+import io.github.odlaver.tepi.scene.TimerRow
+import io.github.odlaver.tepi.scene.TimerScene
 
 // Hosts the island: bound by Android while access is on
 class Listener : NotificationListenerService() {
@@ -26,17 +35,28 @@ class Listener : NotificationListenerService() {
     private lateinit var prefs: Prefs
     private lateinit var lyrics: Lyrics
     private val recent = HashMap<String, Long>()
+    lateinit var timers: Timers
+    lateinit var reminders: Reminders
+    lateinit var notes: Notes
+    lateinit var shelf: Shelf
+    private var alerts: AlertScene? = null
+    private var timerScene: TimerScene? = null
 
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
         lyrics = Lyrics(java.io.File(cacheDir, "lyrics"))
+        notes = Notes(this)
+        shelf = Shelf(this)
+        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
+        reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
     }
 
     override fun onListenerConnected() {
         instance = this
         connected = true
         media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
+        reminders.start()
         ensureIsland()
     }
 
@@ -53,6 +73,7 @@ class Listener : NotificationListenerService() {
     private fun teardown() {
         island?.detach()
         island = null
+        reminders.stop()
         media?.stop()
         media = null
         if (instance === this) instance = null
@@ -72,11 +93,81 @@ class Listener : NotificationListenerService() {
         } else null
         island = Island(ctx, probe, display, type, m, prefs, lyrics).also {
             try {
+                wire(it)
                 it.attach()
                 it.mediaChanged()
             } catch (_: Exception) {
                 island = null
             }
+        }
+    }
+
+    // Features into a fresh island
+    private fun wire(isl: Island) {
+        val al = AlertScene(isl)
+        val ts = TimerScene(isl, timers)
+        alerts = al
+        timerScene = ts
+        isl.register(al)
+        isl.register(ts)
+        isl.home.rows.add(0, TimerRow(isl, timers, ts))
+        isl.home.rows.add(1, PrayerRow(isl, reminders))
+        isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
+        isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })
+        isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true) { timers.focus(25) } else null }
+        isl.homeExtras.add { Action(getString(R.string.note_new)) { newNote() } }
+        isl.menuExtras.add { Action(getString(R.string.t_timer)) { isl.expand(ts) } }
+        isl.menuExtras.add { Action(getString(R.string.note_new)) { newNote() } }
+    }
+
+    private fun open(cls: Class<*>, mode: String) {
+        startActivity(android.content.Intent(this, cls).putExtra(Items.MODE, mode).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+
+    private fun newNote() {
+        island?.input(getString(R.string.note_hint)) { text ->
+            if (text.isNotBlank()) { notes.add(text); alert(Alert("note", getString(R.string.note_saved), text, Glyph.Check, ms = 2500)) }
+        }
+    }
+
+    private fun picked(item: ShelfItem) {
+        if (item.isText) {
+            shelf.copy(item)
+            alert(Alert("shelf", getString(R.string.copied), item.text!!.take(80), Glyph.Check, ms = 2500))
+        } else island?.open(shelf.openIntent(item))
+    }
+
+    private fun alert(a: Alert) {
+        ensureIsland()
+        alerts?.show(a)
+    }
+
+    private fun timerEnded(k: Timers.Kind) {
+        Bell.ring(this)
+        val (title, body) = when (k) {
+            Timers.Kind.Focus -> getString(R.string.t_focus_done) to getString(R.string.t_break_now, prefs.int("focus.break", 5))
+            Timers.Kind.Break -> getString(R.string.t_break_done) to getString(R.string.t_again)
+            else -> getString(R.string.t_done) to ""
+        }
+        val acts = if (k == Timers.Kind.Break) listOf(Action(getString(R.string.t_focus_n, 25), primary = true) { timers.focus(25) }) else emptyList()
+        alert(Alert("timer", title, body, Glyph.Check, acts, 8000))
+    }
+
+    private fun prayAlert(i: Int, at: Long, now: Boolean) {
+        if (now) Bell.ring(this)
+        val name = Prayer.names[i]
+        val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(at))
+        val title = if (now) getString(R.string.pray_now, name) else getString(R.string.pray_soon, name, prefs.int("pray.before", 10))
+        alert(Alert("pray", title, "${reminders.city()?.name ?: ""} · $time", Glyph.Moon, ms = if (now) 10_000 else 7000))
+    }
+
+    private fun nudge(n: Nudge) {
+        val later = Action(getString(R.string.later)) { reminders.snooze(15) }
+        when (n) {
+            Nudge.Drink -> alert(Alert("nudge", getString(R.string.n_drink), getString(R.string.n_drink_count, reminders.drinkCount(), reminders.drinkGoal()), Glyph.Drop,
+                listOf(Action(getString(R.string.n_drank), primary = true) { reminders.drank() }, later), 12_000))
+            Nudge.Eyes -> alert(Alert("nudge", getString(R.string.n_eyes), getString(R.string.n_eyes_body), Glyph.Eye, listOf(later), 20_000))
+            Nudge.Stretch -> alert(Alert("nudge", getString(R.string.n_stretch), getString(R.string.n_stretch_body), Glyph.Stretch, listOf(later), 12_000))
         }
     }
 
@@ -102,6 +193,9 @@ class Listener : NotificationListenerService() {
         val isl = island ?: return false
         when (what) {
             Open.HOME -> isl.openHome()
+            "focus" -> timers.focus(25)
+            "timer" -> timerScene?.let { isl.expand(it) }
+            "note" -> newNote()
             else -> return false
         }
         return true
@@ -175,6 +269,14 @@ class Listener : NotificationListenerService() {
     companion object {
         var instance: Listener? = null
             private set
+
+        // Shelf saved: tell through the island
+        fun shelved(msg: String): Boolean {
+            val l = instance ?: return false
+            if (l.island == null) return false
+            l.alert(Alert("shelf", msg, "", Glyph.Check, ms = 2500))
+            return true
+        }
         var connected = false
             private set
 
