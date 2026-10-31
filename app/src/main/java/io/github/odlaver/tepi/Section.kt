@@ -225,7 +225,19 @@ class Section : Page() {
         val g = group()
         row(g, getString(R.string.reads), getString(R.string.reads_sub), icon = Icon.Shield) { startActivity(Intent(this, Reads::class.java)) }
         row(g, getString(R.string.publisher), getString(R.string.publisher_name), icon = Icon.User)
-        row(g, getString(R.string.version), BuildConfig.VERSION_NAME, icon = Icon.Info)
+        row(g, getString(R.string.version), BuildConfig.VERSION_NAME, button(getString(R.string.check_update), false) {
+            work({ Update.latest() }) { rel ->
+                when {
+                    rel == null -> toast(getString(R.string.update_none))
+                    Update.newer(rel.version, BuildConfig.VERSION_NAME) -> AlertDialog.Builder(this)
+                        .setTitle(getString(R.string.update_found, rel.version))
+                        .setMessage(R.string.update_sub)
+                        .setPositiveButton(R.string.download) { _, _ -> startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(rel.apk))) }
+                        .setNegativeButton(R.string.cancel, null).show()
+                    else -> toast(getString(R.string.update_latest))
+                }
+            }
+        }, Icon.Info)
         row(g, getString(R.string.source), "github.com/odlaver/tepi", icon = Icon.Code) {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/odlaver/tepi")))
         }

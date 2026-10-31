@@ -281,4 +281,17 @@
     <string name="allow_title">Allow on the laptop</string>
     <string name="agents_n">Agents · %1$d</string>
     <string name="offline">offline</string>
+    <string name="translate_with_tepi">Translate (Tepi)</string>
+    <string name="translate">Translate</string>
+    <string name="tr_download">Download translation model?</string>
+    <string name="tr_download_sub">About %1$d MB, once. Translation then runs on this phone and the text is not sent anywhere.</string>
+    <string name="tr_download_ok">Download</string>
+    <string name="tr_failed">Translation failed</string>
+    <string name="close">Close</string>
+    <string name="check_update">Check</string>
+    <string name="update_none">No Android release found yet</string>
+    <string name="update_latest">You have the latest version</string>
+    <string name="update_found">Tepi %1$s is available</string>
+    <string name="update_sub">The APK opens in the browser. Install it over this version; settings stay.</string>
+    <string name="download">Download</string>
 </resources>

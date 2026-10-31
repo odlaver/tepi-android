@@ -42,6 +42,9 @@ class Items : Page() {
             val box = row(g, title, fmt.format(Date(it.id)))
             val acts = ArrayList<Triple<String, Icon, () -> Unit>>()
             acts.add(Triple(getString(R.string.copy), Icon.Copy) { shelf.copy(it) })
+            if (it.isText) acts.add(Triple(getString(R.string.translate), Icon.Globe) {
+                startActivity(android.content.Intent(this, TranslateActivity::class.java).putExtra(android.content.Intent.EXTRA_TEXT, it.text))
+            })
             if (!it.isText) acts.add(Triple(getString(R.string.open), Icon.Open) { try { startActivity(shelf.openIntent(it)) } catch (_: Exception) { } })
             acts.add(Triple(getString(R.string.share), Icon.Share) { startActivity(shelf.shareIntent(it)) })
             acts.add(Triple(getString(R.string.delete), Icon.Trash) { shelf.remove(it); rebuild() })

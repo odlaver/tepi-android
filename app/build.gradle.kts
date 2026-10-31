@@ -13,8 +13,10 @@ android {
         applicationId = "io.github.odlaver.tepi"
         minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+        // Modern phones only; keeps ML Kit's native code small
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
 
     // Publisher key lives outside the repo
@@ -54,4 +56,10 @@ kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
     }
+}
+
+// On-device translation only
+dependencies {
+    implementation("com.google.mlkit:translate:17.0.3")
+    implementation("com.google.mlkit:language-id:17.0.6")
 }

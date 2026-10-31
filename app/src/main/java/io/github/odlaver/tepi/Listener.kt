@@ -59,6 +59,7 @@ class Listener : NotificationListenerService() {
     private var briefs: BriefScene? = null
     private var privacyScene: PrivacyScene? = null
     private var timerScene: TimerScene? = null
+    private var translateScene: io.github.odlaver.tepi.scene.TranslateScene? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -150,6 +151,7 @@ class Listener : NotificationListenerService() {
         isl.register(br)
         isl.register(pv)
         isl.register(AgentScene(isl, pc))
+        translateScene = io.github.odlaver.tepi.scene.TranslateScene(isl).also { isl.register(it) }
         isl.home.rows.add(AgentRow(isl, pc))
         isl.register(IncomingScene(isl, live))
         isl.register(CallScene(isl, live))
@@ -336,6 +338,15 @@ class Listener : NotificationListenerService() {
     companion object {
         var instance: Listener? = null
             private set
+
+        // Translation result into the island
+        fun translated(src: String, out: String, pair: String): Boolean {
+            val l = instance ?: return false
+            l.ensureIsland()
+            val t = l.translateScene ?: return false
+            t.show(src, out, pair)
+            return true
+        }
 
         // Shelf saved: tell through the island
         fun shelved(msg: String): Boolean {

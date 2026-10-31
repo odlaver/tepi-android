@@ -33,6 +33,21 @@
             android:exported="false" />
 
         <activity
+            android:name=".TranslateActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:label="@string/translate_with_tepi"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Tepi.Hop">
+            <intent-filter>
+                <action android:name="android.intent.action.PROCESS_TEXT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".Confirm"
             android:excludeFromRecents="true"
             android:exported="false"

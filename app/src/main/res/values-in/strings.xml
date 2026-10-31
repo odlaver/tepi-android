@@ -278,4 +278,17 @@
     <string name="allow_title">Izinkan di laptop</string>
     <string name="agents_n">Agen · %1$d</string>
     <string name="offline">terputus</string>
+    <string name="translate_with_tepi">Terjemahkan (Tepi)</string>
+    <string name="translate">Terjemahkan</string>
+    <string name="tr_download">Unduh model terjemahan?</string>
+    <string name="tr_download_sub">Sekitar %1$d MB, sekali saja. Setelah itu terjemahan berjalan di HP ini dan teks tidak dikirim ke mana pun.</string>
+    <string name="tr_download_ok">Unduh</string>
+    <string name="tr_failed">Terjemahan gagal</string>
+    <string name="close">Tutup</string>
+    <string name="check_update">Cek</string>
+    <string name="update_none">Belum ada rilis Android</string>
+    <string name="update_latest">Sudah versi terbaru</string>
+    <string name="update_found">Tepi %1$s tersedia</string>
+    <string name="update_sub">APK dibuka di browser. Pasang di atas versi ini; pengaturan tetap.</string>
+    <string name="download">Unduh</string>
 </resources>
