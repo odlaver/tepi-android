@@ -260,4 +260,22 @@
         <item quantity="one">%d langkah lagi</item>
         <item quantity="other">%d langkah lagi</item>
     </plurals>
+    <string name="laptop">Laptop</string>
+    <string name="pc_title">Tepi di Windows</string>
+    <string name="pc_how">Di laptop: Tepi › Pengaturan › Agen › Hubungkan HP. Ketik alamat dan kode yang muncul di sana. Harus satu Wi-Fi.</string>
+    <string name="pc_address">Alamat, misal 192.168.1.5:52341</string>
+    <string name="pc_code">Kode XXXX-XXXX-XXXX</string>
+    <string name="pc_pair">Sambungkan</string>
+    <string name="pc_bad">Alamat butuh port; kode terdiri dari 12 karakter</string>
+    <string name="pc_failed">Gagal tersambung. Cek kode, Wi-Fi, dan firewall laptop.</string>
+    <string name="pc_connected">Tersambung ke %1$s</string>
+    <string name="pc_online">Terjangkau di %1$s</string>
+    <string name="pc_offline">Belum terjangkau di %1$s</string>
+    <string name="agent_asks">%1$s minta %2$s</string>
+    <string name="allow">Izinkan</string>
+    <string name="deny">Tolak</string>
+    <string name="allow_on_pc">Terlalu panjang; jawab di laptop</string>
+    <string name="allow_title">Izinkan di laptop</string>
+    <string name="agents_n">Agen · %1$d</string>
+    <string name="offline">terputus</string>
 </resources>

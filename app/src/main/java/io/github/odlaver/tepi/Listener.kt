@@ -19,6 +19,8 @@ import android.view.Display
 import android.view.WindowManager
 import io.github.odlaver.tepi.scene.Action
 import io.github.odlaver.tepi.scene.Alert
+import io.github.odlaver.tepi.scene.AgentRow
+import io.github.odlaver.tepi.scene.AgentScene
 import io.github.odlaver.tepi.scene.AlertScene
 import io.github.odlaver.tepi.scene.BriefScene
 import io.github.odlaver.tepi.scene.CallScene
@@ -52,6 +54,7 @@ class Listener : NotificationListenerService() {
     private var alerts: AlertScene? = null
     lateinit var live: Live
     lateinit var agenda: Agenda
+    lateinit var pc: Pc
     private lateinit var watch: Watch
     private var briefs: BriefScene? = null
     private var privacyScene: PrivacyScene? = null
@@ -66,6 +69,7 @@ class Listener : NotificationListenerService() {
         timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
         agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
+        pc = Pc(agenda.vault, prefs) { island?.refresh() }
         live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh() }
         watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, privacy = { cam, mic ->
             privacyScene?.let { it.cam = cam; it.mic = mic }
@@ -80,6 +84,7 @@ class Listener : NotificationListenerService() {
         reminders.start()
         watch.start()
         agenda.start()
+        pc.start()
         try { activeNotifications?.forEach { live.posted(it) } } catch (_: Exception) { }
         ensureIsland()
     }
@@ -100,6 +105,7 @@ class Listener : NotificationListenerService() {
         reminders.stop()
         watch.stop()
         agenda.stop()
+        pc.stop()
         live.clear()
         media?.stop()
         media = null
@@ -143,6 +149,8 @@ class Listener : NotificationListenerService() {
         privacyScene = pv
         isl.register(br)
         isl.register(pv)
+        isl.register(AgentScene(isl, pc))
+        isl.home.rows.add(AgentRow(isl, pc))
         isl.register(IncomingScene(isl, live))
         isl.register(CallScene(isl, live))
         isl.register(NavScene(isl, live))

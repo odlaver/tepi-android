@@ -263,4 +263,22 @@
         <item quantity="one">%d step left</item>
         <item quantity="other">%d steps left</item>
     </plurals>
+    <string name="laptop">Laptop</string>
+    <string name="pc_title">Tepi on Windows</string>
+    <string name="pc_how">On the laptop: Tepi › Settings › Agents › Connect phone. Type the address and code shown there. Same Wi-Fi only.</string>
+    <string name="pc_address">Address, e.g. 192.168.1.5:52341</string>
+    <string name="pc_code">Code XXXX-XXXX-XXXX</string>
+    <string name="pc_pair">Connect</string>
+    <string name="pc_bad">Address needs a port; the code has 12 characters</string>
+    <string name="pc_failed">Could not pair. Check the code, the Wi-Fi, and the laptop firewall.</string>
+    <string name="pc_connected">Connected to %1$s</string>
+    <string name="pc_online">Reachable at %1$s</string>
+    <string name="pc_offline">Not reachable at %1$s right now</string>
+    <string name="agent_asks">%1$s wants %2$s</string>
+    <string name="allow">Allow</string>
+    <string name="deny">Deny</string>
+    <string name="allow_on_pc">Too long; answer on the laptop</string>
+    <string name="allow_title">Allow on the laptop</string>
+    <string name="agents_n">Agents · %1$d</string>
+    <string name="offline">offline</string>
 </resources>

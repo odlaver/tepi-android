@@ -194,7 +194,30 @@ class Section : Page() {
                 work({ Ical.fetch(u) != null }) { ok -> if (ok) { ag.vault.put("ics", (ag.icsUrls + u).joinToString("\n")); ag.refresh(); rebuild() } else toast(getString(R.string.ics_bad)) }
             })
         }
+        laptop()
         note(getString(R.string.connect_privacy))
+    }
+
+    // Tepi on Windows: approve agents from here
+    private fun laptop() {
+        val pc = Listener.instance?.pc ?: return
+        label(getString(R.string.laptop))
+        val g = group()
+        if (pc.paired) {
+            row(g, getString(R.string.pc_connected, pc.name.ifEmpty { pc.host }), getString(if (pc.online) R.string.pc_online else R.string.pc_offline, pc.host),
+                button(getString(R.string.disconnect), false) { pc.forget(); rebuild() }, Icon.Laptop)
+            return
+        }
+        row(g, getString(R.string.pc_title), getString(R.string.pc_how), icon = Icon.Laptop)
+        val host = field(getString(R.string.pc_address))
+        val code = field(getString(R.string.pc_code))
+        code.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
+        form(g, host, code, button(getString(R.string.pc_pair)) {
+            val h = host.text.toString().trim()
+            val c = code.text.toString().trim()
+            if (!h.contains(':') || c.replace("-", "").length != 12) { toast(getString(R.string.pc_bad)); return@button }
+            work({ pc.pair(h, c) }) { ok -> if (ok) rebuild() else toast(getString(R.string.pc_failed)) }
+        })
     }
 
     private fun about() {
