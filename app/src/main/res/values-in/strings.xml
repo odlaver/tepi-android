@@ -34,4 +34,18 @@
     <string name="perm_access">Aksesibilitas</string>
     <string name="perm_access_sub">Island bisa disentuh di area status bar. Tepi hanya membuka satu jendela dan tidak membaca isi layar.</string>
     <string name="access_desc">Menaruh island Tepi di atas status bar supaya bisa disentuh. Tepi tidak membaca isi layar atau yang kamu ketik.</string>
+    <string name="cd_music">Memutar %1$s oleh %2$s</string>
+    <string name="reply">Balas</string>
+    <string name="reply_to">Balas ke %1$s</string>
+    <string name="cancel">Batal</string>
+    <string name="send">Kirim</string>
+    <string name="settings">Pengaturan</string>
+    <string name="home">Beranda</string>
+    <string name="hide_hour">Sembunyikan 1 jam</string>
+    <string name="unhide">Tampilkan lagi</string>
+    <string name="greet_morning">Selamat pagi</string>
+    <string name="greet_day">Selamat siang</string>
+    <string name="greet_afternoon">Selamat sore</string>
+    <string name="greet_night">Selamat malam</string>
+    <string name="shortcut_home">Beranda</string>
 </resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mark"
+        android:shortcutId="home"
+        android:shortcutShortLabel="@string/shortcut_home">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="tepi://home"
+            android:targetClass="io.github.odlaver.tepi.Open"
+            android:targetPackage="io.github.odlaver.tepi" />
+    </shortcut>
+</shortcuts>

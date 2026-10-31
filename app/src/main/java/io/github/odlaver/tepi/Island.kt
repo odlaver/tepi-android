@@ -6,28 +6,18 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
-import android.graphics.Bitmap
-import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.RectF
-import android.graphics.Shader
-import android.graphics.Typeface
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.Settings
-import android.text.Layout
-import android.text.StaticLayout
-import android.text.TextPaint
-import android.text.TextUtils
 import android.util.DisplayMetrics
-import android.util.TypedValue
 import android.view.Choreographer
 import android.view.Display
 import android.view.Gravity
@@ -36,30 +26,48 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
+import io.github.odlaver.tepi.scene.Action
+import io.github.odlaver.tepi.scene.HomeRow
+import io.github.odlaver.tepi.scene.HomeScene
+import io.github.odlaver.tepi.scene.Host
+import io.github.odlaver.tepi.scene.MenuScene
+import io.github.odlaver.tepi.scene.Message
+import io.github.odlaver.tepi.scene.MessageScene
+import io.github.odlaver.tepi.scene.MusicRow
+import io.github.odlaver.tepi.scene.MusicScene
+import io.github.odlaver.tepi.scene.Scene
 import kotlin.math.abs
 import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.sin
 
-class Message(val key: String, val title: String, val text: String, val icon: Bitmap?, val intent: PendingIntent?)
-
-// Overlay around the front camera
+// Overlay around the front camera; hosts scenes
 @SuppressLint("ViewConstructor")
-class Island(context: Context, private val probeCtx: Context?, private val screen: Display, private val type: Int, private val media: Media, private val prefs: Prefs, private val lyrics: Lyrics) : View(context) {
-    private enum class Mode { Hidden, Music, Panel, Message }
+class Island(
+    context: Context,
+    private val probeCtx: Context?,
+    private val screen: Display,
+    private val type: Int,
+    media: Media,
+    private val prefs: Prefs,
+    lyrics: Lyrics,
+) : View(context), Host {
+    private enum class Kind { Hidden, Compact, Panel }
 
+    override val ui = Ui(context)
+    override val ctx: Context get() = context
     private val wm = context.getSystemService(WindowManager::class.java)
     private val main = Handler(Looper.getMainLooper())
-    private val d = resources.displayMetrics.density
-    private fun dp(v: Float) = v * d
-    private fun sp(v: Float) = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, v, resources.displayMetrics)
+    private val touchable get() = type == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
 
-    // Tone.Dark from Tepi Windows
-    private val ink = Color.rgb(245, 245, 247)
-    private val sub = Color.argb(158, 245, 245, 247)
-    private val faint = Color.argb(92, 245, 245, 247)
-    private val fill = Color.argb(28, 255, 255, 255)
+    // Scenes
+    val music = MusicScene(this, media, prefs, lyrics)
+    val messages = MessageScene(this)
+    val home = HomeScene(this) { homeActions() }
+    private val menu = MenuScene(this) { menuItems() }
+    private val scenes = arrayListOf<Scene>(messages, music)
+    val menuExtras = ArrayList<() -> Action?>()
+    val homeExtras = ArrayList<() -> Action?>()
 
     private val baseFlags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
         WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
@@ -67,8 +75,7 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
         WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED
     private val lp = WindowManager.LayoutParams(
-        1, 1, type,
-        baseFlags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT,
+        1, 1, type, baseFlags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT,
     ).apply {
         gravity = Gravity.TOP or Gravity.START
         title = "Tepi"
@@ -77,66 +84,59 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         if (Build.VERSION.SDK_INT >= 30) fitInsetsTypes = 0
     }
     private var attached = false
+    private var input: Input? = null
 
     // Geometry, screen px
     private var screenW = 0f
     private val hole = RectF()
     private val pill = RectF()
+    private var statusBottom = 0f
+    private var wingBase = 0f
     private val l = Spring(0f, 0.3f)
     private val t = Spring(0f, 0.3f)
     private val r = Spring(0f, 0.3f)
     private val b = Spring(0f, 0.3f)
     private val rad = Spring(0f, 0.3f)
-    // Two tiers: neck by the camera, body below
     private val neck = Spring(0f, 0.3f)
     private val split = Spring(0f, 0.3f)
     private val radB = Spring(0f, 0.3f)
-    private var statusBottom = 0f
-    private var compactW = 0f
+    private val bubbleK = Spring(0f, 0.004f, 420f, 30f)
     private val contentA = Spring(0f, 0.004f, 520f, 46f)
-    private val playLevel = Spring(0f, 0.004f, 160f, 26f)
-    private val lyricT = Spring(1f, 0.004f, 260f, 32f)
     private val now = RectF()
     private val target = RectF()
+    private val bubble = RectF()
 
     // State
-    private var wanted = Mode.Hidden
-    private var shown = Mode.Hidden
-    private var panelOpen = false
-    private var message: Message? = null
-    private var dismissedKey: String? = null
-    private var pausedAt = 0L
-    private var wasPlaying = false
+    private var kind = Kind.Hidden
+    private var primary: Scene? = null
+    private var second: Scene? = null
+    private var opened: Scene? = null
+    private var shownKey = ""
+    private var wantedKey = ""
+    private var shownScene: Scene? = null
+    private var shownKind = Kind.Hidden
     private var fullscreen = false
-    private var song: SongLyrics? = null
-    private var songKey: String? = null
-    private var lyricIdx = -1
-    private var lyricPrev = ""
+    private var hiddenUntil = 0L
     private var lastTouch = 0L
 
-    // Paints
     private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
-    private val solid = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val img = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-    private val titleP = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(15f); typeface = Typeface.DEFAULT_BOLD }
-    private val subP = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = sub; textSize = sp(13f) }
-    private val timeP = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = faint; textSize = sp(11f); fontFeatureSettings = "tnum" }
-    private val lyricP = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(13.5f); typeface = Typeface.DEFAULT_BOLD }
     private val shape = Path()
     private val tierA = Path()
     private val tierB = Path()
     private val box = RectF()
-    private val glyph = Path()
-    private val tmp = RectF()
     private val loc = IntArray(2)
-    private val shaderM = Matrix()
+    private val zoneL = RectF()
+    private val zoneR = RectF()
+    private val content = RectF()
 
-    // Hit areas in panel
-    private val hitPrev = RectF()
-    private val hitPlay = RectF()
-    private val hitNext = RectF()
-    private val hitBar = RectF()
-    private val hitInfo = RectF()
+    init {
+        home.rows.add(MusicRow(this, music, media))
+    }
+
+    fun register(scene: Scene, homeRow: HomeRow? = null) {
+        scenes.add(scene)
+        if (homeRow != null) home.rows.add(homeRow)
+    }
 
     fun attach() {
         if (attached) return
@@ -157,6 +157,7 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
 
     fun detach() {
         if (!attached) return
+        input?.close()
         main.removeCallbacksAndMessages(null)
         Choreographer.getInstance().removeFrameCallback(frame)
         ticking = false
@@ -166,48 +167,85 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
     }
 
     fun show(m: Message) {
-        message = m
-        panelOpen = false
-        main.removeCallbacks(dropMessage)
-        main.postDelayed(dropMessage, 4500)
-        refresh()
+        if (opened != null && opened !== messages) opened = null
+        messages.show(m)
     }
 
-    private val dropMessage = Runnable { message = null; refresh() }
-    private val closePanel = Runnable {
-        if (panelOpen && SystemClock.uptimeMillis() - lastTouch >= 7900) { panelOpen = false; refresh() }
-    }
-    private val recheck = Runnable { refresh() }
-
-    // Media or prefs changed
-    fun mediaChanged() {
-        val tr = media.track
-        if (tr == null || tr.key != songKey) {
-            song = null
-            lyricIdx = -1
-            songKey = tr?.key
-            if (tr != null && prefs.lyrics) {
-                val k = tr.key
-                lyrics.load(tr.title, tr.artist, tr.durationMs, prefs.lyricsOnline) { got ->
-                    if (songKey == k) { song = got; refresh() }
-                }
-            }
-        }
-        if (tr?.key != dismissedKey) dismissedKey = null
-        if (media.playing) {
-            pausedAt = 0
-            wasPlaying = true
-        } else if (wasPlaying) {
-            pausedAt = SystemClock.uptimeMillis()
-            wasPlaying = false
-        }
-        refresh()
-    }
+    fun mediaChanged() = music.changed()
 
     fun prefsChanged() {
-        songKey = null
         measureScreen()
-        mediaChanged()
+        music.reload()
+    }
+
+    fun openHome() = expand(home)
+
+    // Host
+    override fun expand(scene: Scene) {
+        opened = scene
+        lastTouch = SystemClock.uptimeMillis()
+        armClose()
+        refresh()
+    }
+
+    override fun collapse() {
+        if (opened == null) return
+        opened = null
+        refresh()
+    }
+
+    override fun open(i: Intent) {
+        try { context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } catch (_: Exception) { }
+    }
+
+    @Suppress("DEPRECATION")
+    override fun send(p: PendingIntent) {
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                val o = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
+                p.send(context, 0, null, null, null, null, o.toBundle())
+            } else p.send()
+        } catch (_: Exception) { }
+    }
+
+    override fun haptic() {
+        performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+    }
+
+    override fun input(hint: String, initial: String, done: (String) -> Unit) {
+        val card = input ?: Input(context, type, ui).also { input = it }
+        val w = min(screenW - ui.edge * 2, ui.panelMax)
+        main.removeCallbacks(closePanel)
+        card.show(hint, initial, (hole.centerX() - w / 2).toInt(), (statusBottom + ui.s8).toInt(), w.toInt()) { text ->
+            armClose()
+            done(text)
+        }
+    }
+
+    private val closePanel = Runnable {
+        if (opened != null && SystemClock.uptimeMillis() - lastTouch >= CLOSE_MS - 100) { opened = null; refresh() }
+    }
+
+    private fun armClose() {
+        main.removeCallbacks(closePanel)
+        main.postDelayed(closePanel, CLOSE_MS)
+    }
+
+    private fun homeActions(): List<Action> {
+        val out = ArrayList<Action>()
+        for (f in homeExtras) f()?.let { out.add(it) }
+        out.add(Action(context.getString(R.string.settings)) { open(Intent(context, MainActivity::class.java)); collapse() })
+        return out.take(3)
+    }
+
+    private fun menuItems(): List<Action> {
+        val out = ArrayList<Action>()
+        for (f in menuExtras) f()?.let { out.add(it) }
+        out.add(Action(context.getString(R.string.home)) { main.post { openHome() } })
+        if (hiddenUntil > SystemClock.uptimeMillis()) out.add(Action(context.getString(R.string.unhide)) { hiddenUntil = 0; refresh() })
+        else out.add(Action(context.getString(R.string.hide_hour)) { hiddenUntil = SystemClock.uptimeMillis() + 3_600_000L; refresh() })
+        out.add(Action(context.getString(R.string.settings)) { open(Intent(context, MainActivity::class.java)) })
+        return out
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -254,112 +292,114 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
             }
             // Bar down from the edge: a round hole inside
             if (hole.top <= 1f && hole.height() > hole.width() * 1.4f) {
-                val r = hole.width() / 2
+                val rr = hole.width() / 2
                 val cy = hole.height() / 2
-                hole.set(hole.centerX() - r, cy - r, hole.centerX() + r, cy + r)
+                hole.set(hole.centerX() - rr, cy - rr, hole.centerX() + rr, cy + rr)
             }
         } else {
-            hole.set(screenW / 2 - dp(10f), dp(10f), screenW / 2 + dp(10f), dp(30f))
+            hole.set(screenW / 2 - ui.dp(10f), ui.dp(10f), screenW / 2 + ui.dp(10f), ui.dp(30f))
         }
-        hole.offset(0f, dp(prefs.offsetDp.toFloat()))
-        val pad = dp(5f)
+        hole.offset(0f, ui.dp(prefs.offsetDp.toFloat()))
+        val pad = ui.dp(5f)
         pill.set(hole.left - pad, max(0f, hole.top - pad), hole.right + pad, hole.bottom + pad)
-        if (pill.height() < dp(30f)) pill.bottom = pill.top + dp(30f)
+        if (pill.height() < ui.dp(30f)) pill.bottom = pill.top + ui.dp(30f)
         val bar = resources.getIdentifier("status_bar_height", "dimen", "android").let { if (it != 0) resources.getDimensionPixelSize(it) else 0 }
         statusBottom = max(pill.bottom, (cut?.safeInsetTop?.takeIf { it > 0 } ?: bar).toFloat())
-        compactW = pill.width() + max(pill.height() * 1.1f, dp(30f)) * 2
+        wingBase = max(pill.height() * 1.1f, ui.dp(30f))
     }
 
     private val landscape get() = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    private val wide get() = min(screenW - ui.edge * 2, ui.panelMax)
 
-    private fun pick(): Mode {
-        if (landscape || fullscreen) return Mode.Hidden
-        if (message != null) return Mode.Message
-        val tr = media.track ?: return Mode.Hidden
-        if (panelOpen) return Mode.Panel
-        if (tr.key == dismissedKey) return Mode.Hidden
-        if (media.playing) return Mode.Music
-        val idle = SystemClock.uptimeMillis() - pausedAt
-        if (pausedAt > 0 && idle < PAUSED_MS) {
-            main.removeCallbacks(recheck)
-            main.postDelayed(recheck, PAUSED_MS - idle + 50)
-            return Mode.Music
+    private fun choose() {
+        val o = opened
+        if (o != null && o !== home && o !== menu && !o.live()) opened = null
+        val live = scenes.filter { it.live() }.sortedByDescending { it.priority }
+        val quiet = landscape || fullscreen || hiddenUntil > SystemClock.uptimeMillis()
+        val shown = if (quiet) live.filter { it.priority >= URGENT } else live
+        val op = opened
+        when {
+            op != null -> { kind = Kind.Panel; primary = op; second = null }
+            shown.firstOrNull()?.card() == true -> { kind = Kind.Panel; primary = shown.first(); second = null }
+            shown.isNotEmpty() -> {
+                kind = Kind.Compact
+                primary = shown[0]
+                second = shown.getOrNull(1)?.takeIf { !it.card() }
+            }
+            else -> { kind = Kind.Hidden; primary = null; second = null }
         }
-        return Mode.Hidden
     }
 
+    private fun compactWidth(s: Scene?) = pill.width() + max(s?.wing() ?: 0f, wingBase) * 2
+
     // Recompute target, start motion
-    private fun refresh() {
+    override fun refresh() {
         if (!attached) return
-        wanted = pick()
-        if (wanted != Mode.Panel) panelOpen = false
-        layoutFor(wanted, target)
-        val tiered = wanted == Mode.Panel || wanted == Mode.Message || (wanted == Mode.Music && target.bottom > pill.bottom + 1f)
-        val nk = if (tiered) min(compactW, target.width()) else target.width()
-        val sy = if (tiered) statusBottom else target.top
-        if (target != springTarget() || nk != neck.target || sy != split.target) {
-            l.target = target.left; t.target = target.top; r.target = target.right; b.target = target.bottom
-            neck.target = nk
-            split.target = sy
-            rad.target = if (wanted == Mode.Hidden) hole.height() / 2 else pill.height() / 2
-            radB.target = when (wanted) {
-                Mode.Panel, Mode.Message -> dp(28f)
-                Mode.Music -> if (tiered) dp(18f) else rad.target
-                Mode.Hidden -> rad.target
+        choose()
+        val cx = hole.centerX()
+        var nk: Float
+        var sy: Float
+        var rt = pill.height() / 2
+        var rb = rt
+        when (kind) {
+            Kind.Hidden -> {
+                target.set(hole); nk = hole.width(); sy = hole.top; rt = hole.height() / 2; rb = rt
             }
-            // Grow first; shrink once settled
-            val union = RectF(target)
-            union.union(l.value, t.value, r.value, b.value)
-            place(union, wanted != Mode.Hidden)
+            Kind.Compact -> {
+                val w = compactWidth(primary)
+                val row = primary?.rowWidth() ?: 0f
+                if (row > 0f) {
+                    val bw = row.coerceIn(w, wide)
+                    target.set(cx - bw / 2, pill.top, cx + bw / 2, statusBottom + ui.dp(32f))
+                    nk = w; sy = statusBottom; rb = ui.dp(18f)
+                } else {
+                    target.set(cx - w / 2, pill.top, cx + w / 2, pill.bottom)
+                    nk = w; sy = pill.top
+                }
+            }
+            Kind.Panel -> {
+                val w = wide
+                val h = primary?.panelHeight(w - ui.pad * 2) ?: 0f
+                target.set(cx - w / 2, pill.top, cx + w / 2, statusBottom + ui.s16 + h + ui.pad)
+                nk = min(compactWidth(if (primary?.card() == true) null else primary), w)
+                sy = statusBottom; rb = ui.radiusPanel
+            }
         }
-        if (wanted != shown) contentA.target = 0f
+        // Keep clear of the screen edges
+        val m = ui.edge
+        if (target.left < m) target.offset(m - target.left, 0f)
+        if (target.right > screenW - m) target.offset(screenW - m - target.right, 0f)
+
+        l.target = target.left; t.target = target.top; r.target = target.right; b.target = target.bottom
+        neck.target = nk; split.target = sy; rad.target = rt; radB.target = rb
+        bubbleK.target = if (second != null) 1f else 0f
+        val d = pill.height()
+        bubble.set(target.right + ui.s8, pill.top, target.right + ui.s8 + d, pill.bottom)
+
+        wantedKey = "$kind:${primary?.id}"
+        if (wantedKey != shownKey) contentA.target = 0f
+        contentDescription = primary?.describe()
+
+        // Grow first; shrink once settled
+        val union = RectF(target)
+        union.union(l.value, t.value, r.value, b.value)
+        if (second != null || bubbleK.value > 0.01f) union.union(bubble)
+        place(union, kind != Kind.Hidden || hotspot())
         kick()
     }
 
-    private fun springTarget() = RectF(l.target, t.target, r.target, b.target)
-
-    private fun layoutFor(mode: Mode, out: RectF) {
-        val cx = hole.centerX()
-        val wide = min(screenW - dp(16f), dp(420f))
-        val below = statusBottom + dp(12f)
-        when (mode) {
-            Mode.Hidden -> out.set(hole)
-            Mode.Music -> {
-                var w = compactW
-                var bottom = pill.bottom
-                val line = currentLine()
-                if (line != null) {
-                    w = (lyricP.measureText(line) + dp(36f)).coerceIn(w, wide)
-                    bottom = statusBottom + dp(30f)
-                }
-                out.set(cx - w / 2, pill.top, cx + w / 2, bottom)
-            }
-            Mode.Panel -> {
-                var h = below - pill.top + dp(56f) + dp(16f) + dp(30f) + dp(56f) + dp(14f)
-                if (song?.lines?.isNotEmpty() == true) h += dp(52f)
-                out.set(cx - wide / 2, pill.top, cx + wide / 2, pill.top + h)
-            }
-            Mode.Message -> {
-                val m = message
-                val textH = if (m == null) 0f else messageLayout(m, wide - dp(36f + 40f + 12f)).height.toFloat() + titleP.fontSpacing
-                out.set(cx - wide / 2, pill.top, cx + wide / 2, below + max(dp(40f), textH) + dp(16f))
-            }
-        }
-        // Keep on screen
-        val m = dp(8f)
-        if (out.left < m) out.offset(m - out.left, 0f)
-        if (out.right > screenW - m) out.offset(screenW - m - out.right, 0f)
-    }
+    private fun hotspot() = touchable && prefs.cameraTap
 
     // Window covers the moving shape only
-    private fun place(rect: RectF, touchable: Boolean) {
-        val x = rect.left.toInt() - 2
-        val y = max(0, rect.top.toInt() - 2)
+    private fun place(rect: RectF, touch: Boolean) {
+        val grow = if (kind == Kind.Hidden && touch) ui.s8 else 0f
+        val x = (rect.left - grow).toInt() - 2
+        val y = max(0, (rect.top - grow).toInt() - 2)
         lp.x = x
         lp.y = y
-        lp.width = max(1, rect.right.toInt() + 2 - x)
-        lp.height = max(1, rect.bottom.toInt() + 2 - y)
-        lp.flags = baseFlags or if (touchable) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        lp.width = max(1, (rect.right + grow).toInt() + 2 - x)
+        lp.height = max(1, (rect.bottom + grow).toInt() + 2 - y)
+        lp.flags = baseFlags or if (touch) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         if (attached) wm.updateViewLayout(this, lp)
     }
 
@@ -380,71 +420,82 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         val dt = if (lastNs == 0L) 1f / 60f else ((ns - lastNs) / 1e9f).coerceIn(0f, 1f / 20f)
         lastNs = ns
         var moving = false
-        for (s in arrayOf(l, t, r, b, rad, neck, split, radB)) moving = s.step(dt) or moving
+        for (s in arrayOf(l, t, r, b, rad, neck, split, radB, bubbleK)) moving = s.step(dt) or moving
         moving = contentA.step(dt) or moving
         if (contentA.value <= 0.05f && contentA.target == 0f) {
-            shown = wanted
-            contentA.target = if (shown == Mode.Hidden) 0f else 1f
-            if (shown == Mode.Hidden) contentA.snap(0f)
+            shownKey = wantedKey
+            shownScene = primary
+            shownKind = kind
+            contentA.target = if (kind == Kind.Hidden) 0f else 1f
+            if (kind == Kind.Hidden) contentA.snap(0f)
         }
-        playLevel.target = if (media.playing) 1f else 0f
-        moving = playLevel.step(dt) or moving
-        moving = lyricT.step(dt) or moving
-        if (updateLyric()) refresh()
+        for (s in scenes) moving = s.step(dt) or moving
+        val op = opened
+        if (op === home || op === menu) moving = op.step(dt) or moving
 
-        val live = shown != Mode.Hidden && media.playing && (shown == Mode.Music || shown == Mode.Panel)
-        // Bars and progress at half rate
+        val live = kind != Kind.Hidden && (primary?.ticking() == true || second?.ticking() == true)
+        // Live content at half rate
         if (moving || !live || frameNo++ % 2 == 0) invalidate()
-        if (moving || live) {
-            Choreographer.getInstance().postFrameCallback(frame)
-        } else {
+        if (moving || live) Choreographer.getInstance().postFrameCallback(frame)
+        else {
             ticking = false
             settle()
         }
     }
 
     private fun settle() {
-        if (wanted == Mode.Hidden && shown == Mode.Hidden) place(hole, false)
-        else place(target, true)
-    }
-
-    private fun currentLine(): String? {
-        if (!prefs.lyrics) return null
-        val s = song ?: return null
-        if (lyricIdx < 0 || lyricIdx >= s.lines.size) return null
-        return s.lines[lyricIdx].text.takeIf { it.isNotEmpty() }
-    }
-
-    // True when the line changed
-    private fun updateLyric(): Boolean {
-        val s = song ?: return false
-        if (s.lines.isEmpty()) return false
-        val idx = s.indexAt(media.positionMs() + 150)
-        if (idx == lyricIdx) return false
-        lyricPrev = currentLine() ?: ""
-        lyricIdx = idx
-        lyricT.snap(0f)
-        lyricT.target = 1f
-        return true
+        if (kind == Kind.Hidden) place(if (hotspot()) pill else hole, hotspot())
+        else {
+            val rect = RectF(target)
+            if (second != null) rect.union(bubble)
+            place(rect, true)
+        }
     }
 
     override fun onDraw(canvas: Canvas) {
         now.set(l.value, t.value, r.value, b.value)
-        if (shown == Mode.Hidden && wanted == Mode.Hidden && !ticking) return
+        if (kind == Kind.Hidden && shownKind == Kind.Hidden && !ticking) return
         getLocationOnScreen(loc)
         canvas.save()
         canvas.translate(-loc[0].toFloat(), -loc[1].toFloat())
         buildShape(shape)
+        val k = bubbleK.value.coerceIn(0f, 1f)
+        if (k > 0.01f) shape.addCircle(bubble.centerX(), bubble.centerY(), pill.height() / 2 * k, Path.Direction.CW)
         canvas.drawPath(shape, bg)
         canvas.clipPath(shape)
         val a = contentA.value.coerceIn(0f, 1f)
-        if (a > 0.01f) when (shown) {
-            Mode.Music -> drawMusic(canvas, a)
-            Mode.Panel -> drawPanel(canvas, a)
-            Mode.Message -> drawMessage(canvas, a)
-            Mode.Hidden -> Unit
+        val s = shownScene
+        if (a > 0.01f && s != null) when (shownKind) {
+            Kind.Compact -> {
+                zones(now)
+                s.drawCompact(canvas, zoneL, zoneR, a)
+                if (now.bottom > pill.bottom + 1f) {
+                    val rowA = ((now.bottom - statusBottom) / ui.dp(32f)).coerceIn(0f, 1f) * a
+                    box.set(now.left, statusBottom, now.right, now.bottom)
+                    if (rowA > 0.02f) s.drawRow(canvas, box, rowA)
+                }
+            }
+            Kind.Panel -> {
+                content.set(target.left + ui.pad, statusBottom + ui.s16, target.right - ui.pad, target.bottom - ui.pad)
+                s.drawPanel(canvas, content, a)
+            }
+            Kind.Hidden -> Unit
+        }
+        val sec = second
+        if (k > 0.05f && sec != null && shownKind == Kind.Compact) {
+            box.set(bubble)
+            sec.drawBubble(canvas, box, k * a)
         }
         canvas.restore()
+    }
+
+    // Left and right of the camera inside the neck
+    private fun zones(at: RectF) {
+        val nk = min(neck.value, at.width())
+        val left = at.centerX() - nk / 2
+        val inset = max(ui.dp(7f), (pill.height() - ui.dp(26f)) / 2)
+        zoneL.set(left + inset, pill.top + inset, hole.left - ui.s8, pill.bottom - inset)
+        zoneR.set(hole.right + ui.s8, pill.top + inset, left + nk - inset, pill.bottom - inset)
     }
 
     // Neck and body joined by concave fillets
@@ -468,7 +519,7 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         box.set(now.left, sy, now.right, now.bottom)
         tierB.addRoundRect(box, rb, rb, Path.Direction.CW)
         out.op(tierA, tierB, Path.Op.UNION)
-        val f = min(dp(12f), min((w - nk) / 2 - rb, sy - now.top))
+        val f = min(ui.dp(12f), min((w - nk) / 2 - rb, sy - now.top))
         if (f < 1f) return
         for (side in intArrayOf(-1, 1)) {
             val x = cx + side * nk / 2
@@ -481,230 +532,26 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         }
     }
 
-    private fun drawMusic(c: Canvas, a: Float) {
-        val tr = media.track ?: return
-        val h = pill.height()
-        val s = min(h - dp(12f), dp(26f))
-        val inset = (h - s) / 2
-        val nk = min(neck.value, now.width())
-        val left = now.centerX() - nk / 2
-        tmp.set(left + inset, pill.top + inset, left + inset + s, pill.top + inset + s)
-        drawArt(c, tr.art, tmp, a)
-        drawBars(c, left + nk - inset - s / 2, pill.centerY(), s * 0.8f, a)
-        val line = currentLine() ?: return
-        val rowA = ((now.bottom - statusBottom) / dp(30f)).coerceIn(0f, 1f) * a
-        if (rowA < 0.02f) return
-        val avail = now.width() - dp(28f)
-        val y = statusBottom + dp(15f)
-        val k = lyricT.value.coerceIn(0f, 1f)
-        val shift = dp(10f)
-        if (k < 1f && lyricPrev.isNotEmpty()) drawCentered(c, lyricPrev, lyricP, now.centerX(), y - shift * k, avail, rowA * (1 - k))
-        drawCentered(c, line, lyricP, now.centerX(), y + shift * (1 - k), avail, rowA * k)
-    }
-
-    private fun drawPanel(c: Canvas, a: Float) {
-        val tr = media.track ?: return
-        val left = now.left + dp(18f)
-        val right = now.right - dp(18f)
-        val top = statusBottom + dp(12f)
-        val art = dp(56f)
-        tmp.set(left, top, left + art, top + art)
-        drawArt(c, tr.art, tmp, a)
-        val tx = left + art + dp(14f)
-        val tw = right - tx
-        hitInfo.set(left, top, right, top + art)
-        drawText(c, tr.title, titleP, tx, top + dp(24f), tw, a)
-        if (tr.artist.isNotEmpty()) drawText(c, tr.artist, subP, tx, top + dp(44f), tw, a)
-
-        // Progress
-        val barY = top + art + dp(18f)
-        val dur = tr.durationMs
-        val pos = media.positionMs()
-        solid.color = fill
-        solid.alpha = (solid.alpha * a).toInt()
-        tmp.set(left, barY, right, barY + dp(4f))
-        c.drawRoundRect(tmp, dp(2f), dp(2f), solid)
-        if (dur > 0) {
-            solid.color = sub
-            solid.alpha = (solid.alpha * a).toInt()
-            tmp.right = left + (right - left) * (pos.toFloat() / dur).coerceIn(0f, 1f)
-            c.drawRoundRect(tmp, dp(2f), dp(2f), solid)
-            drawText(c, clock(pos), timeP, left, barY + dp(20f), dp(60f), a)
-            val total = clock(dur)
-            drawText(c, total, timeP, right - timeP.measureText(total), barY + dp(20f), dp(60f), a)
-        }
-        hitBar.set(left, barY - dp(14f), right, barY + dp(18f))
-
-        // Controls
-        val cy = barY + dp(30f) + dp(28f)
-        val cx = now.centerX()
-        val gap = dp(72f)
-        val hit = dp(28f)
-        hitPrev.set(cx - gap - hit, cy - hit, cx - gap + hit, cy + hit)
-        hitPlay.set(cx - hit, cy - hit, cx + hit, cy + hit)
-        hitNext.set(cx + gap - hit, cy - hit, cx + gap + hit, cy + hit)
-        solid.color = ink
-        solid.alpha = (255 * a).toInt()
-        skipGlyph(c, cx - gap, cy, dp(20f), back = true)
-        if (media.playing) pauseGlyph(c, cx, cy, dp(26f)) else playGlyph(c, cx, cy, dp(26f))
-        skipGlyph(c, cx + gap, cy, dp(20f), back = false)
-
-        // Lyrics: current, then next
-        val lines = song?.lines ?: return
-        if (lines.isEmpty()) return
-        val ly = cy + dp(28f) + dp(22f)
-        val cur = currentLine() ?: "♪"
-        drawCentered(c, cur, lyricP, cx, ly, right - left, a)
-        val next = lines.getOrNull(lyricIdx + 1)?.text
-        if (!next.isNullOrEmpty()) drawCentered(c, next, subP, cx, ly + dp(22f), right - left, a)
-    }
-
-    private fun drawMessage(c: Canvas, a: Float) {
-        val m = message ?: return
-        val left = now.left + dp(18f)
-        val right = now.right - dp(18f)
-        val top = statusBottom + dp(12f)
-        val icon = dp(40f)
-        tmp.set(left, top, left + icon, top + icon)
-        drawArt(c, m.icon, tmp, a)
-        val tx = left + icon + dp(12f)
-        val tw = min(screenW - dp(16f), dp(420f)) - dp(36f + 40f + 12f)
-        drawText(c, m.title, titleP, tx, top - titleP.ascent(), tw, a)
-        if (m.text.isEmpty()) return
-        val layout = messageLayout(m, tw)
-        c.save()
-        c.translate(tx, top + titleP.fontSpacing)
-        layout.paint.alpha = (sub.ushr(24) * a).toInt()
-        layout.draw(c)
-        c.restore()
-    }
-
-    private var msgLayout: StaticLayout? = null
-    private var msgFor: Message? = null
-
-    private fun messageLayout(m: Message, width: Float): StaticLayout {
-        val w = max(1, width.toInt())
-        msgLayout?.let { if (msgFor === m && it.width == w) return it }
-        val p = TextPaint(subP)
-        val made = StaticLayout.Builder.obtain(m.text, 0, m.text.length, p, w)
-            .setMaxLines(2)
-            .setEllipsize(TextUtils.TruncateAt.END)
-            .setAlignment(Layout.Alignment.ALIGN_NORMAL)
-            .build()
-        msgLayout = made
-        msgFor = m
-        return made
-    }
-
-    private fun drawArt(c: Canvas, art: Bitmap?, at: RectF, a: Float) {
-        val radius = at.width() * 0.24f
-        if (art == null) {
-            solid.color = fill
-            solid.alpha = (solid.alpha * a).toInt()
-            c.drawRoundRect(at, radius, radius, solid)
-            solid.color = sub
-            solid.alpha = (solid.alpha * a).toInt()
-            playGlyph(c, at.centerX(), at.centerY(), at.width() * 0.36f)
-            return
-        }
-        val shader = BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
-        val k = max(at.width() / art.width, at.height() / art.height)
-        shaderM.setScale(k, k)
-        shaderM.postTranslate(at.centerX() - art.width * k / 2, at.centerY() - art.height * k / 2)
-        shader.setLocalMatrix(shaderM)
-        img.shader = shader
-        img.alpha = (255 * a).toInt()
-        c.drawRoundRect(at, radius, radius, img)
-        img.shader = null
-    }
-
-    // Decorative bars: follow play state, not audio
-    private fun drawBars(c: Canvas, cx: Float, cy: Float, maxH: Float, a: Float) {
-        val w = dp(2.6f)
-        val gap = dp(2.4f)
-        val total = w * 4 + gap * 3
-        val secs = SystemClock.uptimeMillis() / 1000f
-        val level = playLevel.value.coerceIn(0f, 1f)
-        solid.color = ink
-        solid.alpha = (255 * a).toInt()
-        for (i in 0 until 4) {
-            val wave = 0.5f + 0.25f * sin(secs * (5.1f + i * 1.7f) + i * 1.3f) + 0.25f * sin(secs * (8.3f - i) + i * 2.1f)
-            val h = maxH * (0.2f + 0.8f * wave * level).coerceIn(0.2f, 1f)
-            val x = cx - total / 2 + i * (w + gap)
-            tmp.set(x, cy - h / 2, x + w, cy + h / 2)
-            c.drawRoundRect(tmp, w / 2, w / 2, solid)
-        }
-    }
-
-    private fun drawText(c: Canvas, text: String, p: TextPaint, x: Float, baseline: Float, width: Float, a: Float) {
-        val s = TextUtils.ellipsize(text, p, width, TextUtils.TruncateAt.END)
-        val base = p.alpha
-        p.alpha = (base * a).toInt()
-        c.drawText(s, 0, s.length, x, baseline, p)
-        p.alpha = base
-    }
-
-    // Vertically centred on y
-    private fun drawCentered(c: Canvas, text: String, p: TextPaint, cx: Float, y: Float, width: Float, a: Float) {
-        val s = TextUtils.ellipsize(text, p, width, TextUtils.TruncateAt.END)
-        val w = p.measureText(s, 0, s.length)
-        val base = p.alpha
-        p.alpha = (base * a).toInt()
-        c.drawText(s, 0, s.length, cx - w / 2, y - (p.ascent() + p.descent()) / 2, p)
-        p.alpha = base
-    }
-
-    private fun playGlyph(c: Canvas, cx: Float, cy: Float, size: Float) {
-        glyph.reset()
-        val h = size * 0.5f
-        glyph.moveTo(cx - h * 0.7f, cy - h)
-        glyph.lineTo(cx + h, cy)
-        glyph.lineTo(cx - h * 0.7f, cy + h)
-        glyph.close()
-        c.drawPath(glyph, solid)
-    }
-
-    private fun pauseGlyph(c: Canvas, cx: Float, cy: Float, size: Float) {
-        val w = size * 0.26f
-        val h = size * 0.5f
-        val g = size * 0.14f
-        tmp.set(cx - g - w, cy - h, cx - g, cy + h)
-        c.drawRoundRect(tmp, w * 0.3f, w * 0.3f, solid)
-        tmp.set(cx + g, cy - h, cx + g + w, cy + h)
-        c.drawRoundRect(tmp, w * 0.3f, w * 0.3f, solid)
-    }
-
-    private fun skipGlyph(c: Canvas, cx: Float, cy: Float, size: Float, back: Boolean) {
-        val h = size * 0.42f
-        val dir = if (back) -1f else 1f
-        glyph.reset()
-        glyph.moveTo(cx - dir * h, cy - h)
-        glyph.lineTo(cx + dir * h * 0.6f, cy)
-        glyph.lineTo(cx - dir * h, cy + h)
-        glyph.close()
-        c.drawPath(glyph, solid)
-        val bx = cx + dir * h * 0.7f
-        val bw = size * 0.11f
-        tmp.set(min(bx, bx + dir * bw), cy - h, max(bx, bx + dir * bw), cy + h)
-        c.drawRoundRect(tmp, bw / 2, bw / 2, solid)
-    }
-
-    private fun clock(ms: Long): String {
-        val s = ms / 1000
-        return "%d:%02d".format(s / 60, s % 60)
-    }
-
     // Touch
     private var downX = 0f
     private var downY = 0f
     private var pressed = false
-    private var swiped = false
+    private var acted = false
     private val longPress = Runnable {
-        if (pressed && !swiped) {
-            pressed = false
+        if (pressed && !acted) {
+            acted = true
             performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
-            open(Intent(context, MainActivity::class.java))
+            expand(menu)
         }
+    }
+
+    private fun inside(x: Float, y: Float): Boolean {
+        if (kind == Kind.Hidden) {
+            box.set(pill); box.inset(-ui.s8, -ui.s8)
+            return hotspot() && box.contains(x, y)
+        }
+        if (now.contains(x, y)) return true
+        return second != null && bubble.contains(x, y)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -712,27 +559,31 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         lastTouch = SystemClock.uptimeMillis()
         when (e.actionMasked) {
             MotionEvent.ACTION_OUTSIDE -> {
-                if (panelOpen) { panelOpen = false; refresh() }
+                if (opened != null) collapse()
                 return false
             }
             MotionEvent.ACTION_DOWN -> {
-                if (shown == Mode.Hidden || !now.contains(e.rawX, e.rawY)) return false
+                if (!inside(e.rawX, e.rawY)) return false
                 downX = e.rawX
                 downY = e.rawY
                 pressed = true
-                swiped = false
-                main.postDelayed(longPress, 550)
+                acted = false
+                main.postDelayed(longPress, 500)
             }
             MotionEvent.ACTION_MOVE -> {
-                if (pressed && !swiped && downY - e.rawY > dp(24f)) {
-                    swiped = true
-                    main.removeCallbacks(longPress)
-                    swipeUp()
+                if (!pressed || acted) return true
+                val dx = e.rawX - downX
+                val dy = e.rawY - downY
+                val slop = ui.dp(24f)
+                when {
+                    dy > slop && abs(dy) > abs(dx) -> { acted = true; main.removeCallbacks(longPress); swipeDown() }
+                    dy < -slop && abs(dy) > abs(dx) -> { acted = true; main.removeCallbacks(longPress); swipeUp() }
+                    abs(dx) > ui.dp(48f) && kind == Kind.Panel -> { acted = true; main.removeCallbacks(longPress); page(if (dx < 0) 1 else -1) }
                 }
             }
             MotionEvent.ACTION_UP -> {
                 main.removeCallbacks(longPress)
-                if (pressed && !swiped && hypot(e.rawX - downX, e.rawY - downY) < dp(12f)) tap(e.rawX, e.rawY)
+                if (pressed && !acted && hypot(e.rawX - downX, e.rawY - downY) < ui.dp(12f)) tap(e.rawX, e.rawY)
                 pressed = false
             }
             MotionEvent.ACTION_CANCEL -> {
@@ -743,66 +594,50 @@ class Island(context: Context, private val probeCtx: Context?, private val scree
         return true
     }
 
+    private fun swipeDown() {
+        when (kind) {
+            Kind.Hidden -> openHome()
+            Kind.Compact -> primary?.let { expand(it) }
+            Kind.Panel -> Unit
+        }
+    }
+
     private fun swipeUp() {
-        when (shown) {
-            Mode.Panel -> panelOpen = false
-            Mode.Message -> message = null
-            Mode.Music -> dismissedKey = media.track?.key
-            Mode.Hidden -> Unit
+        when (kind) {
+            Kind.Panel -> if (opened != null) collapse() else primary?.dismiss()
+            Kind.Compact -> primary?.dismiss()
+            Kind.Hidden -> Unit
         }
         refresh()
+    }
+
+    // Next or previous live scene, Home last
+    private fun page(dir: Int) {
+        val pages = scenes.filter { it.live() && !it.card() }.sortedByDescending { it.priority } + home
+        val cur = pages.indexOf(primary)
+        val next = pages[((if (cur < 0) 0 else cur) + dir + pages.size) % pages.size]
+        haptic()
+        expand(next)
     }
 
     private fun tap(x: Float, y: Float) {
-        when (shown) {
-            Mode.Music -> {
-                panelOpen = true
-                main.removeCallbacks(closePanel)
-                main.postDelayed(closePanel, 8000)
+        when (kind) {
+            Kind.Hidden -> openHome()
+            Kind.Compact -> {
+                val sec = second
+                if (sec != null && bubble.contains(x, y)) expand(sec)
+                else primary?.let { if (!it.tapCompact()) expand(it) }
             }
-            Mode.Panel -> {
-                main.removeCallbacks(closePanel)
-                main.postDelayed(closePanel, 8000)
-                when {
-                    hitPlay.contains(x, y) -> media.toggle()
-                    hitPrev.contains(x, y) -> media.prev()
-                    hitNext.contains(x, y) -> media.next()
-                    hitBar.contains(x, y) -> media.track?.durationMs?.takeIf { it > 0 }?.let { d ->
-                        media.seek((d * ((x - hitBar.left) / hitBar.width()).coerceIn(0f, 1f)).toLong())
-                    }
-                    hitInfo.contains(x, y) -> media.track?.pkg?.let { pkg ->
-                        context.packageManager.getLaunchIntentForPackage(pkg)?.let { open(it); panelOpen = false }
-                    }
-                    else -> return
-                }
-                performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            Kind.Panel -> {
+                armClose()
+                primary?.tap(x, y)
             }
-            Mode.Message -> {
-                message?.intent?.let { send(it) }
-                message = null
-            }
-            Mode.Hidden -> Unit
         }
         refresh()
     }
 
-    private fun open(i: Intent) {
-        try {
-            context.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
-        } catch (_: Exception) { }
-    }
-
-    @Suppress("DEPRECATION")
-    private fun send(p: PendingIntent) {
-        try {
-            if (Build.VERSION.SDK_INT >= 34) {
-                val o = ActivityOptions.makeBasic().setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED)
-                p.send(context, 0, null, null, null, null, o.toBundle())
-            } else p.send()
-        } catch (_: Exception) { }
-    }
-
     companion object {
-        private const val PAUSED_MS = 20_000L
+        private const val CLOSE_MS = 9000L
+        const val URGENT = 95
     }
 }

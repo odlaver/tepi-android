@@ -35,4 +35,19 @@
     <string name="perm_access">Accessibility</string>
     <string name="perm_access_sub">Lets you tap the island where it overlaps the status bar. Tepi opens one window and reads nothing on screen.</string>
     <string name="access_desc">Puts the Tepi island above the status bar so it can be tapped. Tepi does not read screen content or what you type.</string>
+    <string name="cd_music">Playing %1$s by %2$s</string>
+    <string name="reply">Reply</string>
+    <string name="reply_to">Reply to %1$s</string>
+    <string name="cancel">Cancel</string>
+    <string name="send">Send</string>
+    <string name="settings">Settings</string>
+    <string name="home">Home</string>
+    <string name="hide_hour">Hide for 1 hour</string>
+    <string name="unhide">Show again</string>
+    <string name="greet_morning">Good morning</string>
+    <string name="greet_day">Good afternoon</string>
+    <string name="greet_afternoon">Good evening</string>
+    <string name="greet_night">Good night</string>
+    <string name="tile_label">Tepi</string>
+    <string name="shortcut_home">Home</string>
 </resources>

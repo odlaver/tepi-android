@@ -17,6 +17,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.view.Display
 import android.view.WindowManager
+import io.github.odlaver.tepi.scene.Message
 
 // Hosts the island: bound by Android while access is on
 class Listener : NotificationListenerService() {
@@ -95,6 +96,17 @@ class Listener : NotificationListenerService() {
         island?.show(Message("tepi.test", getString(R.string.test_title), getString(R.string.test_text), appIcon(packageName), null))
     }
 
+    // From tile, shortcuts, notifications
+    fun command(what: String): Boolean {
+        ensureIsland()
+        val isl = island ?: return false
+        when (what) {
+            Open.HOME -> isl.openHome()
+            else -> return false
+        }
+        return true
+    }
+
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         val isl = island ?: return
         if (!prefs.notifs) return
@@ -121,7 +133,9 @@ class Listener : NotificationListenerService() {
         val reveal = prefs.notifContent && !locked
         val app = appLabel(sbn.packageName)
         val icon = n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(sbn.packageName)
-        val m = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent)
+        val reply = if (reveal) n.actions?.firstOrNull { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true } else null
+        val others = if (reveal) n.actions?.filter { it !== reply && it.remoteInputs.isNullOrEmpty() && it.actionIntent != null }?.take(2).orEmpty() else emptyList()
+        val m = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others)
         else Message(sbn.key, app, getString(R.string.new_message), appIcon(sbn.packageName), n.contentIntent)
         isl.show(m)
     }
