@@ -120,7 +120,7 @@ class Lyrics(private val cacheDir: File) {
             c.connectTimeout = 9000
             c.readTimeout = 9000
             c.instanceFollowRedirects = false
-            c.setRequestProperty("User-Agent", "Tepi Android (github.com/odlaver/tepi)")
+            c.setRequestProperty("User-Agent", "Tepi Android (github.com/odlaver/tepi-android)")
             try {
                 val code = c.responseCode
                 val stream = if (code in 200..299) c.inputStream else c.errorStream

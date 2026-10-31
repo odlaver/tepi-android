@@ -238,8 +238,8 @@ class Section : Page() {
                 }
             }
         }, Icon.Info)
-        row(g, getString(R.string.source), "github.com/odlaver/tepi", icon = Icon.Code) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/odlaver/tepi")))
+        row(g, getString(R.string.source), "github.com/odlaver/tepi-android", icon = Icon.Code) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/odlaver/tepi-android")))
         }
         row(g, getString(R.string.coffee), getString(R.string.coffee_sub), icon = Icon.Coffee) {
             startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(MainActivity.COFFEE)))

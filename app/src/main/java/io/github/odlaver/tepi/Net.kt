@@ -18,7 +18,7 @@ object Net {
             setMethod(c, method)
             c.connectTimeout = timeout
             c.readTimeout = timeout
-            c.setRequestProperty("User-Agent", "Tepi Android (github.com/odlaver/tepi)")
+            c.setRequestProperty("User-Agent", "Tepi Android (github.com/odlaver/tepi-android)")
             for ((k, v) in headers) c.setRequestProperty(k, v)
             if (body != null) {
                 c.doOutput = true

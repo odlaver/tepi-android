@@ -27,6 +27,6 @@ class Reads : Page() {
     }
 
     companion object {
-        private const val SRC = "https://github.com/odlaver/tepi/blob/android/android/app/src/main/java/io/github/odlaver/tepi"
+        private const val SRC = "https://github.com/odlaver/tepi-android/blob/main/app/src/main/java/io/github/odlaver/tepi"
     }
 }
