@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">Tepi</string>
+    <string name="section_access">Access</string>
+    <string name="perm_overlay">Display over other apps</string>
+    <string name="perm_overlay_sub">Lets the island sit around the front camera.</string>
+    <string name="perm_listener">Notification access</string>
+    <string name="perm_listener_sub">Reads what is playing and incoming messages. Both stay on this phone.</string>
+    <string name="grant">Allow</string>
+    <string name="granted">On</string>
+    <string name="section_island">Island</string>
+    <string name="lyrics">Lyrics</string>
+    <string name="lyrics_sub">The current line under the island while a song plays.</string>
+    <string name="lyrics_online">Look up lyrics online</string>
+    <string name="lyrics_online_sub">Sends the title and artist to LRCLIB, then NetEase if LRCLIB has nothing.</string>
+    <string name="notifs">Message notifications</string>
+    <string name="notifs_sub">Incoming messages drop out of the island for a few seconds.</string>
+    <string name="notif_content">Show message text</string>
+    <string name="notif_content_sub">Hidden while the phone is locked.</string>
+    <string name="offset">Vertical position</string>
+    <string name="test">Test the island</string>
+    <string name="status_running">Island running</string>
+    <string name="status_missing">Island stopped: access incomplete</string>
+    <string name="status_waiting">Waiting for Android to connect Tepi</string>
+    <string name="source">Source code</string>
+    <string name="new_message">New message</string>
+    <string name="test_title">Tepi is on</string>
+    <string name="test_text">The island is running on this phone.</string>
+    <string name="cd_prev">Previous</string>
+    <string name="cd_play">Play</string>
+    <string name="cd_pause">Pause</string>
+    <string name="cd_next">Next</string>
+    <string name="restricted">Android 13 and later lock this access for apps installed outside the Play Store. Unlock it in App info › ⋮ › Allow restricted settings.</string>
+    <string name="app_info">App info</string>
+    <string name="perm_access">Accessibility</string>
+    <string name="perm_access_sub">Lets you tap the island where it overlaps the status bar. Tepi opens one window and reads nothing on screen.</string>
+    <string name="access_desc">Puts the Tepi island above the status bar so it can be tapped. Tepi does not read screen content or what you type.</string>
+</resources>

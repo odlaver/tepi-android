@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_access">Akses</string>
+    <string name="perm_overlay">Tampil di atas aplikasi lain</string>
+    <string name="perm_overlay_sub">Island bisa tampil di sekitar kamera depan.</string>
+    <string name="perm_listener">Akses notifikasi</string>
+    <string name="perm_listener_sub">Membaca lagu yang diputar dan pesan masuk. Keduanya tetap di HP ini.</string>
+    <string name="grant">Izinkan</string>
+    <string name="granted">Aktif</string>
+    <string name="section_island">Island</string>
+    <string name="lyrics">Lirik</string>
+    <string name="lyrics_sub">Baris yang sedang dinyanyikan, di bawah island.</string>
+    <string name="lyrics_online">Cari lirik online</string>
+    <string name="lyrics_online_sub">Judul dan artis dikirim ke LRCLIB, lalu NetEase kalau LRCLIB tidak punya.</string>
+    <string name="notifs">Notifikasi pesan</string>
+    <string name="notifs_sub">Pesan masuk muncul dari island beberapa detik.</string>
+    <string name="notif_content">Tampilkan isi pesan</string>
+    <string name="notif_content_sub">Disembunyikan selama HP terkunci.</string>
+    <string name="offset">Posisi vertikal</string>
+    <string name="test">Uji island</string>
+    <string name="status_running">Island berjalan</string>
+    <string name="status_missing">Island berhenti: akses belum lengkap</string>
+    <string name="status_waiting">Menunggu Android menyambungkan Tepi</string>
+    <string name="source">Kode sumber</string>
+    <string name="new_message">Pesan baru</string>
+    <string name="test_title">Tepi aktif</string>
+    <string name="test_text">Island berjalan di HP ini.</string>
+    <string name="cd_prev">Sebelumnya</string>
+    <string name="cd_play">Putar</string>
+    <string name="cd_pause">Jeda</string>
+    <string name="cd_next">Berikutnya</string>
+    <string name="restricted">Android 13 ke atas mengunci akses ini untuk aplikasi dari luar Play Store. Buka kuncinya di Info aplikasi › ⋮ › Izinkan setelan terbatas.</string>
+    <string name="app_info">Info aplikasi</string>
+    <string name="perm_access">Aksesibilitas</string>
+    <string name="perm_access_sub">Island bisa disentuh di area status bar. Tepi hanya membuka satu jendela dan tidak membaca isi layar.</string>
+    <string name="access_desc">Menaruh island Tepi di atas status bar supaya bisa disentuh. Tepi tidak membaca isi layar atau yang kamu ketik.</string>
+</resources>
