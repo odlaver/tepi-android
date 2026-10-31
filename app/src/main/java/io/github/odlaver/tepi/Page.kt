@@ -103,12 +103,13 @@ abstract class Page : Activity() {
             minimumHeight = dpi(48f)
             setPadding(dpi(14f), dpi(10f), dpi(14f), dpi(10f))
         }
-        if (icon != null) box.addView(glyph(icon), LinearLayout.LayoutParams(dpi(20f), dpi(20f)).apply { marginEnd = dpi(12f) })
+        if (icon != null) box.addView(glyph(icon), LinearLayout.LayoutParams(dpi(30f), dpi(30f)).apply { marginEnd = dpi(12f) })
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         texts.addView(text(title, 14f, ink))
         if (!detail.isNullOrEmpty()) texts.addView(text(detail, 12f, sub).apply { setPadding(0, dpi(1f), 0, 0) })
         box.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dpi(12f) })
         if (trailing != null) box.addView(trailing)
+        else if (onClick != null) box.addView(View(this).apply { background = IconDrawable(Icon.Chevron, sub, dpi(16f)) }, LinearLayout.LayoutParams(dpi(16f), dpi(16f)))
         if (onClick != null) {
             box.isFocusable = true
             box.background = ripple(null)
@@ -143,7 +144,7 @@ abstract class Page : Activity() {
             text = title
             textSize = 14f
             if (icon != null) {
-                setCompoundDrawablesRelative(IconDrawable(icon, ink, dpi(20f)).apply { setBounds(0, 0, dpi(20f), dpi(20f)) }, null, null, null)
+                setCompoundDrawablesRelative(IconDrawable(icon, ink, dpi(30f), fill, dp(8f)).apply { setBounds(0, 0, dpi(30f), dpi(30f)) }, null, null, null)
                 compoundDrawablePadding = dpi(12f)
             }
             setTextColor(ink)
@@ -156,7 +157,7 @@ abstract class Page : Activity() {
             setOnCheckedChangeListener { _, v -> set(v) }
         }
         box.addView(sw)
-        if (!detail.isNullOrEmpty()) box.addView(text(detail, 12f, sub).apply { setPadding(if (icon != null) dpi(32f) else 0, 0, dpi(60f), 0) })
+        if (!detail.isNullOrEmpty()) box.addView(text(detail, 12f, sub).apply { setPadding(if (icon != null) dpi(42f) else 0, 0, dpi(60f), 0) })
         g.addView(box)
         return sw
     }
@@ -168,7 +169,7 @@ abstract class Page : Activity() {
             setPadding(dpi(14f), dpi(12f), dpi(14f), dpi(4f))
         }
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        if (icon != null) top.addView(glyph(icon), LinearLayout.LayoutParams(dpi(20f), dpi(20f)).apply { marginEnd = dpi(12f) })
+        if (icon != null) top.addView(glyph(icon), LinearLayout.LayoutParams(dpi(30f), dpi(30f)).apply { marginEnd = dpi(12f) })
         top.addView(text(title, 14f, ink), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
         val v = text(fmt(value), 13f, sub).apply { fontFeatureSettings = "tnum" }
         top.addView(v)
@@ -207,7 +208,40 @@ abstract class Page : Activity() {
         setOnClickListener { onClick() }
     }
 
-    protected fun glyph(icon: Icon) = View(this).apply { background = IconDrawable(icon, ink, dpi(20f)) }
+    // Icon on a small rounded tile
+    protected fun glyph(icon: Icon) = View(this).apply { background = IconDrawable(icon, ink, dpi(30f), fill, dp(8f)) }
+
+    protected fun field(hint: String, secret: Boolean = false, value: String = "") = android.widget.EditText(this).apply {
+        this.hint = hint
+        setText(value)
+        textSize = 14f
+        setTextColor(ink)
+        setHintTextColor(withAlpha(ink, 110))
+        setSingleLine()
+        inputType = if (secret) android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        else android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+        background = GradientDrawable().apply { setColor(fill); cornerRadius = dp(10f) }
+        setPadding(dpi(12f), dpi(10f), dpi(12f), dpi(10f))
+    }
+
+    // Field plus button under a group
+    protected fun form(g: LinearLayout, vararg views: View) {
+        line(g)
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dpi(14f), dpi(12f), dpi(14f), dpi(12f)) }
+        views.forEachIndexed { i, v ->
+            box.addView(v, LinearLayout.LayoutParams(if (v is android.widget.EditText) ViewGroup.LayoutParams.MATCH_PARENT else ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                if (i > 0) topMargin = dpi(8f)
+            })
+        }
+        g.addView(box)
+    }
+
+    // Runs off the main thread, result back on it
+    protected fun <T> work(job: () -> T, done: (T) -> Unit) {
+        Thread { val r = job(); runOnUiThread { if (!isFinishing) done(r) } }.start()
+    }
+
+    protected fun toast(msg: String) = android.widget.Toast.makeText(this, msg, android.widget.Toast.LENGTH_SHORT).show()
 
     protected fun addButton(view: View, top: Float = 16f) {
         col.addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dpi(top) })

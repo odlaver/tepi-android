@@ -31,6 +31,10 @@
             android:exported="false" />
 
         <activity
+            android:name=".Section"
+            android:exported="false" />
+
+        <activity
             android:name=".Reads"
             android:exported="false" />
 

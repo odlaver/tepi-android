@@ -11,7 +11,7 @@ import android.graphics.drawable.Drawable
 enum class Icon {
     Play, Pause, Next, Prev, Stop, Plus, Check, Close, Timer, Note, Gear, Home, Hide, Copy, Share, Open, Reply,
     Flag, Music, Lyrics, Bell, Moon, Drop, Eye, Stretch, Bolt, Phone, Headphones, Download, Nav, Camera, Shield,
-    Book, Tasks, Shelf, Info, Code, User, Battery, Layers, Hand, Power, Chat, Link, Pin, Trash, Laptop, Globe
+    Book, Tasks, Shelf, Info, Code, User, Battery, Layers, Hand, Power, Chat, Link, Pin, Trash, Laptop, Globe, Coffee, Chevron, Spark
 }
 
 // Line icons on a 24-unit grid, drawn with the Ink stroke
@@ -102,16 +102,27 @@ object Icons {
             Icon.Trash -> { ln(c, 4f, 6.5f, 20f, 6.5f); poly(c, 9f, 6.5f, 9.5f, 3.5f, 14.5f, 3.5f, 15f, 6.5f); poly(c, 6f, 6.5f, 7f, 20.5f, 17f, 20.5f, 18f, 6.5f) }
             Icon.Laptop -> { rr(c, 5f, 5f, 19f, 15f, 1.5f); ln(c, 2.5f, 19f, 21.5f, 19f) }
             Icon.Globe -> { c.drawCircle(12f, 12f, 8.5f, p); ln(c, 3.5f, 12f, 20.5f, 12f); r.set(8f, 3.5f, 16f, 20.5f); c.drawOval(r, p) }
+            Icon.Coffee -> { poly(c, 4f, 9f, 16f, 9f, 15f, 19f, 5f, 19f, close = true); path.reset(); path.moveTo(16f, 11f); path.quadTo(20.5f, 11f, 20.5f, 13.5f); path.quadTo(20.5f, 16f, 15.5f, 16f); c.drawPath(path, p); ln(c, 8f, 3.5f, 8f, 6f); ln(c, 12f, 3.5f, 12f, 6f) }
+            Icon.Chevron -> poly(c, 9f, 5f, 16f, 12f, 9f, 19f)
+            Icon.Spark -> { ln(c, 12f, 3f, 12f, 21f); ln(c, 3f, 12f, 21f, 12f); ln(c, 6f, 6f, 18f, 18f); ln(c, 18f, 6f, 6f, 18f) }
         }
         line()
     }
 }
 
-// Icon as a Drawable for settings rows
-class IconDrawable(private val icon: Icon, private val color: Int, private val sizePx: Int) : Drawable() {
+// Icon as a Drawable; optional rounded tile behind it
+class IconDrawable(private val icon: Icon, private val color: Int, private val sizePx: Int, private val tile: Int = 0, private val radius: Float = 0f) : Drawable() {
+    private val bg = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val box = RectF()
     override fun draw(canvas: Canvas) {
         val b = bounds
-        Icons.draw(canvas, icon, b.exactCenterX(), b.exactCenterY(), minOf(b.width(), b.height()).toFloat(), color)
+        val s = minOf(b.width(), b.height()).toFloat()
+        if (tile != 0) {
+            bg.color = tile
+            box.set(b)
+            canvas.drawRoundRect(box, radius, radius, bg)
+            Icons.draw(canvas, icon, b.exactCenterX(), b.exactCenterY(), s * 0.6f, color)
+        } else Icons.draw(canvas, icon, b.exactCenterX(), b.exactCenterY(), s, color)
     }
     override fun getIntrinsicWidth() = sizePx
     override fun getIntrinsicHeight() = sizePx

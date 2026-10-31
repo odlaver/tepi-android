@@ -22,6 +22,9 @@ import io.github.odlaver.tepi.scene.Alert
 import io.github.odlaver.tepi.scene.AlertScene
 import io.github.odlaver.tepi.scene.BriefScene
 import io.github.odlaver.tepi.scene.CallScene
+import io.github.odlaver.tepi.scene.ClassRow
+import io.github.odlaver.tepi.scene.TaskRow
+import io.github.odlaver.tepi.scene.TasksScene
 import io.github.odlaver.tepi.scene.ClockScene
 import io.github.odlaver.tepi.scene.IncomingScene
 import io.github.odlaver.tepi.scene.NavScene
@@ -48,6 +51,7 @@ class Listener : NotificationListenerService() {
     lateinit var shelf: Shelf
     private var alerts: AlertScene? = null
     lateinit var live: Live
+    lateinit var agenda: Agenda
     private lateinit var watch: Watch
     private var briefs: BriefScene? = null
     private var privacyScene: PrivacyScene? = null
@@ -61,6 +65,7 @@ class Listener : NotificationListenerService() {
         shelf = Shelf(this)
         timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
+        agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
         live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh() }
         watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, privacy = { cam, mic ->
             privacyScene?.let { it.cam = cam; it.mic = mic }
@@ -74,6 +79,7 @@ class Listener : NotificationListenerService() {
         media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
         reminders.start()
         watch.start()
+        agenda.start()
         try { activeNotifications?.forEach { live.posted(it) } } catch (_: Exception) { }
         ensureIsland()
     }
@@ -93,6 +99,7 @@ class Listener : NotificationListenerService() {
         island = null
         reminders.stop()
         watch.stop()
+        agenda.stop()
         live.clear()
         media?.stop()
         media = null
@@ -142,7 +149,10 @@ class Listener : NotificationListenerService() {
         isl.register(ClockScene(isl, live))
         isl.register(ProgressScene(isl, live))
         isl.home.rows.add(0, TimerRow(isl, timers, ts))
-        isl.home.rows.add(1, PrayerRow(isl, reminders))
+        isl.home.rows.add(1, ClassRow(isl, agenda))
+        isl.home.rows.add(2, PrayerRow(isl, reminders))
+        val tasks = TasksScene(isl, agenda)
+        isl.home.rows.add(TaskRow(isl, agenda, tasks))
         isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
         isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })
         isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true, icon = Icon.Timer) { timers.focus(25) } else null }
@@ -171,6 +181,15 @@ class Listener : NotificationListenerService() {
     private fun alert(a: Alert) {
         ensureIsland()
         alerts?.show(a)
+    }
+
+    private fun classSoon(s: ClassSlot) {
+        val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(s.start))
+        val where = listOf(time, s.room.ifEmpty { if (s.online) "Online" else "" }).filter { it.isNotEmpty() }.joinToString(" · ")
+        val acts = s.url?.let { u -> listOf(Action(getString(R.string.join), primary = true, icon = Icon.Open) {
+            island?.open(android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(u)))
+        }) } ?: emptyList()
+        alert(Alert("class", getString(if (s.exam) R.string.exam_soon else R.string.class_soon, s.title), where, Glyph.Book, acts, 10_000))
     }
 
     private fun lowBattery(level: Int) {

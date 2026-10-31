@@ -1,7 +1,12 @@
 package io.github.odlaver.tepi
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.RectF
 import android.graphics.drawable.GradientDrawable
 import android.net.Uri
 import android.os.Build
@@ -13,16 +18,31 @@ import android.service.notification.NotificationListenerService
 import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
-import android.widget.TextView
 
-private data class Quad(val key: String, val title: Int, val detail: Int, val icon: Icon)
+// The island's own pill, as on the Windows tray icon
+class Mark(context: Context) : View(context) {
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val r = RectF()
+    override fun onDraw(c: Canvas) {
+        val h = height.toFloat()
+        val w = width.toFloat()
+        p.color = Color.argb(60, 255, 255, 255)
+        r.set(0f, 0f, w, h)
+        c.drawRoundRect(r, h / 2, h / 2, p)
+        p.color = Color.BLACK
+        r.inset(h * 0.08f, h * 0.08f)
+        c.drawRoundRect(r, r.height() / 2, r.height() / 2, p)
+        p.color = Color.WHITE
+        c.drawCircle(w - h / 2, h / 2, h * 0.22f, p)
+    }
+}
+
+data class Quad<A, B, C, D>(val a: A, val b: B, val c: C, val d: D)
 
 class MainActivity : Page() {
     private val main = Handler(Looper.getMainLooper())
     private var resumedAt = 0L
     private var lastState = ""
-    private lateinit var status: TextView
-    private lateinit var statusDot: View
 
     override fun onResume() {
         super.onResume()
@@ -53,145 +73,106 @@ class MainActivity : Page() {
     private fun overlay() = Settings.canDrawOverlays(this)
     private fun access() = Listener.hasAccess(this)
     private fun a11y() = Access.instance != null
-    private fun blocked() = overlay() && access() && !Listener.connected && SystemClock.uptimeMillis() - resumedAt > 5000
-
+    private fun canDraw() = overlay() || a11y()
+    private fun blocked() = canDraw() && access() && !Listener.connected && SystemClock.uptimeMillis() - resumedAt > 5000
+    private fun running() = canDraw() && access() && Listener.connected
     private fun state() = "${overlay()}${access()}${a11y()}${Listener.connected}${blocked()}${Oem.batteryFree(this)}"
 
     override fun build() {
-        // Name large, version small
-        val head = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.BOTTOM }
-        head.addView(text(getString(R.string.app_name), 28f, ink, bold = true))
-        head.addView(text(BuildConfig.VERSION_NAME, 13f, sub).apply { setPadding(dpi(6f), 0, 0, dpi(5f)) })
-        col.addView(head, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dpi(12f) })
-
-        val statusRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dpi(6f), 0, 0) }
-        statusDot = View(this)
-        statusRow.addView(statusDot, LinearLayout.LayoutParams(dpi(8f), dpi(8f)).apply { marginEnd = dpi(8f) })
-        status = text("", 13f, sub)
-        statusRow.addView(status)
-        col.addView(statusRow)
-        val running = overlay() && access() && Listener.connected
-        status.setText(when {
-            running -> R.string.status_running
-            blocked() -> R.string.status_blocked
-            overlay() && access() -> R.string.status_waiting
-            else -> R.string.status_missing
-        })
-        statusDot.background = GradientDrawable().apply {
-            shape = GradientDrawable.OVAL
-            if (running) setColor(ink) else setStroke(dpi(1.5f), sub)
-        }
-
+        hero()
         steps()
-        island()
-        activities()
-        productivity()
-        about()
+        label(getString(R.string.section_settings))
+        val g = group()
+        for ((mode, title, detail, icon) in listOf(
+            Quad(Section.ISLAND, R.string.section_island, R.string.sec_island_sub, Icon.Layers),
+            Quad(Section.ACTIVITIES, R.string.section_activities, R.string.sec_activities_sub, Icon.Spark),
+            Quad(Section.PRODUCTIVITY, R.string.section_productivity, R.string.sec_productivity_sub, Icon.Timer),
+            Quad(Section.REMINDERS, R.string.section_reminders, R.string.sec_reminders_sub, Icon.Bell),
+            Quad(Section.CONNECT, R.string.section_connect, R.string.sec_connect_sub, Icon.Link),
+            Quad(Section.ABOUT, R.string.section_about, R.string.sec_about_sub, Icon.Info),
+        )) row(g, getString(title), getString(detail), icon = icon) { startActivity(Intent(this, Section::class.java).putExtra(Section.MODE, mode)) }
+        coffee()
+    }
+
+    // Black card in the island's shape language
+    private fun hero() {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dpi(18f), dpi(18f), dpi(18f), dpi(16f))
+            // Hairline keeps it visible on a black page
+            background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(22f); setStroke(dpi(1f), Color.argb(40, 255, 255, 255)) }
+        }
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        top.addView(Mark(this), LinearLayout.LayoutParams(dpi(44f), dpi(22f)).apply { marginEnd = dpi(12f) })
+        top.addView(text(getString(R.string.app_name), 22f, Color.WHITE, bold = true))
+        top.addView(text(BuildConfig.VERSION_NAME, 12f, Color.argb(150, 255, 255, 255)).apply { setPadding(dpi(6f), dpi(6f), 0, 0) })
+        card.addView(top)
+        val run = running()
+        val statusRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dpi(12f), 0, 0) }
+        statusRow.addView(View(this).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                if (run) setColor(Color.rgb(52, 199, 89)) else setStroke(dpi(1.5f), Color.argb(150, 255, 255, 255))
+            }
+        }, LinearLayout.LayoutParams(dpi(8f), dpi(8f)).apply { marginEnd = dpi(8f) })
+        statusRow.addView(text(getString(when {
+            run -> R.string.status_running
+            blocked() -> R.string.status_blocked
+            canDraw() && access() -> R.string.status_waiting
+            else -> R.string.status_missing
+        }), 13f, Color.argb(200, 255, 255, 255)), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        if (run) statusRow.addView(text(getString(R.string.test), 12f, Color.BLACK, bold = true).apply {
+            gravity = Gravity.CENTER
+            minHeight = dpi(30f)
+            setPadding(dpi(12f), 0, dpi(12f), 0)
+            background = ripple(GradientDrawable().apply { setColor(Color.WHITE); cornerRadius = dp(15f) })
+            isFocusable = true
+            setOnClickListener { Listener.instance?.test() }
+        })
+        card.addView(statusRow)
+        col.addView(card, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dpi(12f) })
     }
 
     private fun done(ok: Boolean, label: Int, action: () -> Unit): View =
-        if (ok) text(getString(R.string.granted), 13f, sub) else button(getString(label)) { action() }
+        if (ok) View(this).apply { background = IconDrawable(Icon.Check, ink, dpi(18f)); layoutParams = LinearLayout.LayoutParams(dpi(18f), dpi(18f)) }
+        else button(getString(label)) { action() }
 
     private fun steps() {
-        label(getString(R.string.section_setup))
+        val need = listOf(overlay(), access(), Oem.batteryFree(this), a11y()).count { !it } + if (Oem.hasAutostart && blocked()) 1 else 0
+        label(if (need == 0) getString(R.string.steps_done) else resources.getQuantityString(R.plurals.steps_left, need, need))
         val g = group()
-        row(g, getString(R.string.perm_overlay), getString(R.string.perm_overlay_sub), done(overlay(), R.string.grant) {
+        row(g, getString(R.string.perm_overlay), if (overlay()) null else getString(R.string.perm_overlay_sub), done(overlay(), R.string.grant) {
             startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:$packageName")))
         }, Icon.Layers)
-        row(g, getString(R.string.perm_listener), getString(R.string.perm_listener_sub), done(access(), R.string.grant) { openListenerSettings() }, Icon.Bell)
+        row(g, getString(R.string.perm_listener), if (access()) null else getString(R.string.perm_listener_sub), done(access(), R.string.grant) { openListenerSettings() }, Icon.Bell)
         if (!access() && Build.VERSION.SDK_INT >= 33) restricted(g)
         if (Oem.hasAutostart) {
             val detail = getString(if (blocked()) R.string.autostart_blocked else R.string.autostart_sub, Oem.name)
-            row(g, getString(R.string.autostart), detail, button(getString(R.string.open), !Listener.connected) { Oem.openAutostart(this) }, Icon.Power)
+            row(g, getString(R.string.autostart), detail, button(getString(R.string.open), blocked()) { Oem.openAutostart(this) }, Icon.Power)
         }
-        row(g, getString(R.string.battery), getString(R.string.battery_sub),
+        row(g, getString(R.string.battery), if (Oem.batteryFree(this)) null else getString(R.string.battery_sub),
             done(Oem.batteryFree(this), R.string.grant) { Oem.askBattery(this) }, Icon.Battery)
-        row(g, getString(R.string.perm_access), getString(R.string.perm_access_sub), done(a11y(), R.string.turn_on) {
+        row(g, getString(R.string.perm_access), if (a11y()) null else getString(R.string.perm_access_sub), done(a11y(), R.string.turn_on) {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }, Icon.Hand)
         if (!a11y() && Build.VERSION.SDK_INT >= 33) restricted(g)
     }
 
     private fun restricted(g: LinearLayout) {
-        val box = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dpi(16f), 0, dpi(16f), dpi(14f))
-        }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dpi(56f), 0, dpi(14f), dpi(12f)) }
         box.addView(text(getString(R.string.restricted), 12f, sub))
         box.addView(button(getString(R.string.app_info), false) { Oem.appInfo(this) },
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dpi(10f) })
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dpi(8f) })
         g.addView(box)
     }
 
-    private fun island() {
-        label(getString(R.string.section_island))
+    private fun coffee() {
+        label(getString(R.string.support))
         val g = group()
-        toggle(g, getString(R.string.camera_tap), getString(if (a11y()) R.string.camera_tap_sub else R.string.camera_tap_off), prefs.cameraTap, a11y(), Icon.Camera) {
-            prefs.cameraTap = it; changed()
+        row(g, getString(R.string.coffee), getString(R.string.coffee_sub), icon = Icon.Coffee) {
+            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(COFFEE)))
         }
-        slider(g, getString(R.string.offset), Prefs.OFFSET_MIN, Prefs.OFFSET_MAX, prefs.offsetDp, { (if (it > 0) "+$it" else "$it") + " dp" }, Icon.Pin) {
-            prefs.offsetDp = it
-            changed()
-            Listener.instance?.test()
-        }
-        row(g, getString(R.string.triggers), getString(R.string.triggers_sub), icon = Icon.Info)
-        addButton(button(getString(R.string.test), icon = Icon.Play) { Listener.instance?.test() }, 12f)
-    }
-
-    private fun activities() {
-        label(getString(R.string.section_activities))
-        val g = group()
-        toggle(g, getString(R.string.music), getString(R.string.music_sub), prefs.music, icon = Icon.Music) { prefs.music = it; changed() }
-        toggle(g, getString(R.string.lyrics), getString(R.string.lyrics_sub), prefs.lyrics, icon = Icon.Lyrics) { prefs.lyrics = it; changed() }
-        toggle(g, getString(R.string.lyrics_online), getString(R.string.lyrics_online_sub), prefs.lyricsOnline, icon = Icon.Globe) { prefs.lyricsOnline = it; changed() }
-        toggle(g, getString(R.string.notifs), getString(R.string.notifs_sub), prefs.notifs, icon = Icon.Chat) { prefs.notifs = it }
-        toggle(g, getString(R.string.notif_content), getString(R.string.notif_content_sub), prefs.notifContent, icon = Icon.Eye) { prefs.notifContent = it }
-        for ((key, title, detail, icon) in listOf(
-            Quad("act.charge", R.string.act_charge, R.string.act_charge_sub, Icon.Bolt),
-            Quad("act.call", R.string.act_call, R.string.act_call_sub, Icon.Phone),
-            Quad("act.progress", R.string.act_progress, R.string.act_progress_sub, Icon.Download),
-            Quad("act.nav", R.string.act_nav, R.string.act_nav_sub, Icon.Nav),
-            Quad("act.ringer", R.string.act_ringer, R.string.act_ringer_sub, Icon.Bell),
-            Quad("act.audio", R.string.act_audio, R.string.act_audio_sub, Icon.Headphones),
-            Quad("act.privacy", R.string.act_privacy, R.string.act_privacy_sub, Icon.Shield),
-        )) toggle(g, getString(title), getString(detail), prefs.bool(key, true), icon = icon) { prefs.set(key, it); changed() }
-    }
-
-    private fun productivity() {
-        label(getString(R.string.section_productivity))
-        val g = group()
-        choice(g, getString(R.string.focus_break), listOf(5, 10, 15, 20).map { it to getString(R.string.t_min_n, it) }, prefs.int("focus.break", 5), Icon.Timer) { prefs.set("focus.break", it) }
-        row(g, getString(R.string.notes), getString(R.string.notes_sub), icon = Icon.Note) { startActivity(Intent(this, Items::class.java).putExtra(Items.MODE, Items.NOTES)) }
-        row(g, getString(R.string.shelf), getString(R.string.shelf_sub), icon = Icon.Shelf) { startActivity(Intent(this, Items::class.java).putExtra(Items.MODE, Items.SHELF)) }
-
-        label(getString(R.string.section_reminders))
-        val r = group()
-        toggle(r, getString(R.string.pray), getString(R.string.pray_sub), prefs.bool("pray", false), icon = Icon.Moon) { prefs.set("pray", it); rebuild() }
-        if (prefs.bool("pray", false)) {
-            choice(r, getString(R.string.pray_city), Prayer.cities.map { it.name to it.name }, prefs.str("pray.city", ""), Icon.Pin) { prefs.set("pray.city", it) }
-            choice(r, getString(R.string.pray_before), listOf(0, 5, 10, 15).map { it to if (it == 0) getString(R.string.off) else getString(R.string.t_min_n, it) },
-                prefs.int("pray.before", 10), Icon.Bell) { prefs.set("pray.before", it) }
-        }
-        toggle(r, getString(R.string.drink), getString(R.string.drink_sub), prefs.bool("drink", false), icon = Icon.Drop) { prefs.set("drink", it); rebuild() }
-        if (prefs.bool("drink", false)) {
-            choice(r, getString(R.string.every), listOf(30, 45, 60, 90).map { it to getString(R.string.t_min_n, it) }, prefs.int("drink.every", 60), Icon.Timer) { prefs.set("drink.every", it) }
-            choice(r, getString(R.string.drink_goal), listOf(6, 8, 10, 12).map { it to getString(R.string.glasses, it) }, prefs.int("drink.goal", 8), Icon.Check) { prefs.set("drink.goal", it) }
-        }
-        toggle(r, getString(R.string.eyes), getString(R.string.eyes_sub), prefs.bool("eyes", false), icon = Icon.Eye) { prefs.set("eyes", it) }
-        toggle(r, getString(R.string.stretch), getString(R.string.stretch_sub), prefs.bool("stretch", false), icon = Icon.Stretch) { prefs.set("stretch", it); rebuild() }
-        if (prefs.bool("stretch", false)) {
-            choice(r, getString(R.string.every), listOf(30, 60, 90).map { it to getString(R.string.t_min_n, it) }, prefs.int("stretch.every", 60), Icon.Timer) { prefs.set("stretch.every", it) }
-        }
-    }
-
-    private fun about() {
-        label(getString(R.string.section_about))
-        val g = group()
-        row(g, getString(R.string.reads), getString(R.string.reads_sub), icon = Icon.Shield) { startActivity(Intent(this, Reads::class.java)) }
-        row(g, getString(R.string.publisher), getString(R.string.publisher_name), icon = Icon.User)
-        row(g, getString(R.string.source), "github.com/odlaver/tepi", icon = Icon.Code) {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/odlaver/tepi")))
-        }
+        note(getString(R.string.made_by, getString(R.string.publisher_name)))
     }
 
     private fun openListenerSettings() {
@@ -203,5 +184,9 @@ class MainActivity : Page() {
         } catch (_: Exception) {
             startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         }
+    }
+
+    companion object {
+        const val COFFEE = "https://odlaver.github.io/tepi/#kopi"
     }
 }
