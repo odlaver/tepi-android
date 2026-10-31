@@ -20,6 +20,13 @@ import android.view.WindowManager
 import io.github.odlaver.tepi.scene.Action
 import io.github.odlaver.tepi.scene.Alert
 import io.github.odlaver.tepi.scene.AlertScene
+import io.github.odlaver.tepi.scene.BriefScene
+import io.github.odlaver.tepi.scene.CallScene
+import io.github.odlaver.tepi.scene.ClockScene
+import io.github.odlaver.tepi.scene.IncomingScene
+import io.github.odlaver.tepi.scene.NavScene
+import io.github.odlaver.tepi.scene.PrivacyScene
+import io.github.odlaver.tepi.scene.ProgressScene
 import io.github.odlaver.tepi.scene.Glyph
 import io.github.odlaver.tepi.scene.Message
 import io.github.odlaver.tepi.scene.NoteRow
@@ -40,6 +47,10 @@ class Listener : NotificationListenerService() {
     lateinit var notes: Notes
     lateinit var shelf: Shelf
     private var alerts: AlertScene? = null
+    lateinit var live: Live
+    private lateinit var watch: Watch
+    private var briefs: BriefScene? = null
+    private var privacyScene: PrivacyScene? = null
     private var timerScene: TimerScene? = null
 
     override fun onCreate() {
@@ -50,6 +61,11 @@ class Listener : NotificationListenerService() {
         shelf = Shelf(this)
         timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
+        live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh() }
+        watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, privacy = { cam, mic ->
+            privacyScene?.let { it.cam = cam; it.mic = mic }
+            island?.refresh()
+        })
     }
 
     override fun onListenerConnected() {
@@ -57,6 +73,8 @@ class Listener : NotificationListenerService() {
         connected = true
         media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
         reminders.start()
+        watch.start()
+        try { activeNotifications?.forEach { live.posted(it) } } catch (_: Exception) { }
         ensureIsland()
     }
 
@@ -74,6 +92,8 @@ class Listener : NotificationListenerService() {
         island?.detach()
         island = null
         reminders.stop()
+        watch.stop()
+        live.clear()
         media?.stop()
         media = null
         if (instance === this) instance = null
@@ -110,14 +130,25 @@ class Listener : NotificationListenerService() {
         timerScene = ts
         isl.register(al)
         isl.register(ts)
+        val br = BriefScene(isl)
+        val pv = PrivacyScene(isl)
+        briefs = br
+        privacyScene = pv
+        isl.register(br)
+        isl.register(pv)
+        isl.register(IncomingScene(isl, live))
+        isl.register(CallScene(isl, live))
+        isl.register(NavScene(isl, live))
+        isl.register(ClockScene(isl, live))
+        isl.register(ProgressScene(isl, live))
         isl.home.rows.add(0, TimerRow(isl, timers, ts))
         isl.home.rows.add(1, PrayerRow(isl, reminders))
         isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
         isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })
-        isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true) { timers.focus(25) } else null }
-        isl.homeExtras.add { Action(getString(R.string.note_new)) { newNote() } }
-        isl.menuExtras.add { Action(getString(R.string.t_timer)) { isl.expand(ts) } }
-        isl.menuExtras.add { Action(getString(R.string.note_new)) { newNote() } }
+        isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true, icon = Icon.Timer) { timers.focus(25) } else null }
+        isl.homeExtras.add { Action(getString(R.string.note_new), icon = Icon.Note) { newNote() } }
+        isl.menuExtras.add { Action(getString(R.string.t_timer), icon = Icon.Timer) { isl.expand(ts) } }
+        isl.menuExtras.add { Action(getString(R.string.note_new), icon = Icon.Note) { newNote() } }
     }
 
     private fun open(cls: Class<*>, mode: String) {
@@ -142,6 +173,14 @@ class Listener : NotificationListenerService() {
         alerts?.show(a)
     }
 
+    private fun lowBattery(level: Int) {
+        alert(Alert("battery", getString(R.string.low_battery, level), getString(R.string.low_battery_body), Glyph.Bolt, ms = 6000))
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification) {
+        live.removed(sbn.key)
+    }
+
     private fun timerEnded(k: Timers.Kind) {
         Bell.ring(this)
         val (title, body) = when (k) {
@@ -149,7 +188,7 @@ class Listener : NotificationListenerService() {
             Timers.Kind.Break -> getString(R.string.t_break_done) to getString(R.string.t_again)
             else -> getString(R.string.t_done) to ""
         }
-        val acts = if (k == Timers.Kind.Break) listOf(Action(getString(R.string.t_focus_n, 25), primary = true) { timers.focus(25) }) else emptyList()
+        val acts = if (k == Timers.Kind.Break) listOf(Action(getString(R.string.t_focus_n, 25), primary = true, icon = Icon.Timer) { timers.focus(25) }) else emptyList()
         alert(Alert("timer", title, body, Glyph.Check, acts, 8000))
     }
 
@@ -165,7 +204,7 @@ class Listener : NotificationListenerService() {
         val later = Action(getString(R.string.later)) { reminders.snooze(15) }
         when (n) {
             Nudge.Drink -> alert(Alert("nudge", getString(R.string.n_drink), getString(R.string.n_drink_count, reminders.drinkCount(), reminders.drinkGoal()), Glyph.Drop,
-                listOf(Action(getString(R.string.n_drank), primary = true) { reminders.drank() }, later), 12_000))
+                listOf(Action(getString(R.string.n_drank), primary = true, icon = Icon.Check) { reminders.drank() }, later), 12_000))
             Nudge.Eyes -> alert(Alert("nudge", getString(R.string.n_eyes), getString(R.string.n_eyes_body), Glyph.Eye, listOf(later), 20_000))
             Nudge.Stretch -> alert(Alert("nudge", getString(R.string.n_stretch), getString(R.string.n_stretch_body), Glyph.Stretch, listOf(later), 12_000))
         }
@@ -202,6 +241,7 @@ class Listener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
+        live.posted(sbn)
         val isl = island ?: return
         if (!prefs.notifs) return
         val n = sbn.notification

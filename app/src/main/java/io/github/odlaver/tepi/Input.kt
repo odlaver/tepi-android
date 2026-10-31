@@ -32,11 +32,11 @@ class Input(context: Context, private val type: Int, private val ui: Ui) : Linea
         setPadding(ui.pad.toInt(), p, ui.pad.toInt(), p)
         background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = ui.radiusPanel }
         hint.setTextColor(ui.sub)
-        hint.textSize = 13f
+        hint.textSize = 12f
         addView(hint)
         field.setTextColor(ui.ink)
         field.setHintTextColor(ui.faint)
-        field.textSize = 16f
+        field.textSize = 14f
         field.background = GradientDrawable().apply { setColor(ui.fill); cornerRadius = ui.radiusButton }
         field.setPadding(p, ui.s12.toInt(), p, ui.s12.toInt())
         field.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
@@ -53,12 +53,12 @@ class Input(context: Context, private val type: Int, private val ui: Ui) : Linea
 
     private fun button(label: String, primary: Boolean, onClick: () -> Unit) = TextView(context).apply {
         text = label
-        textSize = 14f
+        textSize = 13f
         typeface = android.graphics.Typeface.DEFAULT_BOLD
         setTextColor(if (primary) Color.BLACK else ui.ink)
         gravity = Gravity.CENTER
-        minHeight = ui.dp(44f).toInt()
-        minWidth = ui.dp(88f).toInt()
+        minHeight = ui.btnH.toInt()
+        minWidth = ui.dp(72f).toInt()
         setPadding(ui.s16.toInt(), 0, ui.s16.toInt(), 0)
         background = GradientDrawable().apply { setColor(if (primary) ui.ink else ui.fill); cornerRadius = ui.radiusButton }
         isFocusable = true

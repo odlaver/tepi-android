@@ -16,7 +16,7 @@ interface HomeRow {
     fun tap(x: Float, y: Float) = false
 }
 
-class Action(val label: String, val primary: Boolean = false, val run: () -> Unit)
+class Action(val label: String, val primary: Boolean = false, val icon: io.github.odlaver.tepi.Icon? = null, val run: () -> Unit)
 
 // Opened on demand: camera tap, tile, shortcut
 class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(host) {
@@ -33,12 +33,12 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
 
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}
 
-    private fun header() = ui.dp(64f)
+    private fun header() = ui.dp(52f)
 
     override fun panelHeight(w: Float): Float {
         var h = header()
-        for (row in rows) if (row.visible()) h += ui.s12 + row.height(w - ui.s24) + ui.s24
-        if (actions().isNotEmpty()) h += ui.s16 + ui.dp(44f)
+        for (row in rows) if (row.visible()) h += ui.s8 + row.height(w - ui.s24) + ui.s20
+        if (actions().isNotEmpty()) h += ui.s12 + ui.btnH
         return h
     }
 
@@ -55,18 +55,18 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
         val now = Date()
-        ui.text(c, greeting(), ui.body, r.left, r.top + ui.dp(14f), r.width(), a)
-        ui.text(c, time.format(now), ui.big, r.left, r.top + ui.dp(54f), r.width() / 2, a)
-        ui.textEnd(c, date.format(now), ui.body, r.right, r.top + ui.dp(54f), a)
+        ui.text(c, greeting(), ui.body, r.left, r.top + ui.dp(12f), r.width(), a)
+        ui.text(c, time.format(now), ui.big, r.left, r.top + ui.dp(44f), r.width() / 2, a)
+        ui.textEnd(c, date.format(now), ui.body, r.right, r.top + ui.dp(44f), a)
         var y = r.top + header()
         placed.clear()
         for (row in rows) {
             if (!row.visible()) continue
-            y += ui.s12
-            val h = row.height(r.width() - ui.s24) + ui.s24
+            y += ui.s8
+            val h = row.height(r.width() - ui.s24) + ui.s20
             val box = RectF(r.left, y, r.right, y + h)
             ui.fill(c, box, ui.radiusRow, ui.fill, a)
-            val inner = RectF(box.left + ui.s12, box.top + ui.s12, box.right - ui.s12, box.bottom - ui.s12)
+            val inner = RectF(box.left + ui.s12, box.top + ui.dp(10f), box.right - ui.s12, box.bottom - ui.dp(10f))
             row.draw(c, inner, a)
             placed.add(box to row)
             y += h
@@ -74,12 +74,12 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
         hits.clear()
         val acts = actions()
         if (acts.isEmpty()) return
-        y += ui.s16
+        y += ui.s12
         val gap = ui.s8
         val bw = (r.width() - gap * (acts.size - 1)) / acts.size
         acts.forEachIndexed { i, act ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.dp(44f))
-            ui.button(c, br, act.label, a, act.primary)
+            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
+            ui.button(c, br, act.label, a, act.primary, act.icon)
             hits.add(br to act)
         }
     }
@@ -99,7 +99,7 @@ class MusicRow(private val host: Host, private val music: MusicScene, private va
     private val hitInfo = RectF()
 
     override fun visible() = music.present()
-    override fun height(w: Float) = ui.dp(44f)
+    override fun height(w: Float) = ui.dp(38f)
 
     override fun draw(c: Canvas, r: RectF, a: Float) {
         val tr = media.track ?: return
@@ -107,15 +107,13 @@ class MusicRow(private val host: Host, private val music: MusicScene, private va
         tmp.set(r.left, r.top, r.left + s, r.bottom)
         ui.art(c, tr.art, tmp, a)
         val tx = r.left + s + ui.s12
-        val btn = ui.dp(44f)
+        val btn = ui.dp(38f)
         val tw = r.right - btn - ui.s8 - tx
-        ui.text(c, tr.title, ui.label, tx, r.top + ui.dp(18f), tw, a)
-        ui.text(c, tr.artist, ui.body, tx, r.top + ui.dp(37f), tw, a)
+        ui.text(c, tr.title, ui.label, tx, r.top + ui.dp(15f), tw, a)
+        ui.text(c, tr.artist, ui.body, tx, r.top + ui.dp(32f), tw, a)
         hitPlay.set(r.right - btn, r.centerY() - btn / 2, r.right, r.centerY() + btn / 2)
         hitInfo.set(r.left, r.top, hitPlay.left, r.bottom)
-        ui.solid.color = ui.alpha(ui.ink, a)
-        if (media.playing) ui.pause(c, hitPlay.centerX(), hitPlay.centerY(), ui.dp(22f))
-        else ui.play(c, hitPlay.centerX(), hitPlay.centerY(), ui.dp(22f))
+        ui.icon(c, if (media.playing) io.github.odlaver.tepi.Icon.Pause else io.github.odlaver.tepi.Icon.Play, hitPlay.centerX(), hitPlay.centerY(), ui.dp(22f), ui.ink, a)
     }
 
     override fun tap(x: Float, y: Float): Boolean {
@@ -133,7 +131,7 @@ class MenuScene(host: Host, private val items: () -> List<Action>) : Scene(host)
     override fun live() = false
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}
 
-    private val rowH get() = ui.dp(48f)
+    private val rowH get() = ui.dp(40f)
 
     override fun panelHeight(w: Float): Float {
         val n = items().size
@@ -153,7 +151,7 @@ class MenuScene(host: Host, private val items: () -> List<Action>) : Scene(host)
             val y = r.top + row * (rowH + gap)
             val full = i == list.size - 1 && list.size % 2 == 1
             val br = RectF(x, y, if (full) r.right else x + bw, y + rowH)
-            ui.button(c, br, act.label, a, act.primary)
+            ui.button(c, br, act.label, a, act.primary, act.icon)
             hits.add(br to act)
         }
     }

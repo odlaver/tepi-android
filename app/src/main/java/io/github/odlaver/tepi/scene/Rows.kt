@@ -14,15 +14,15 @@ import java.util.Date
 
 // Two-line row: label above, value below
 private fun pair(ui: io.github.odlaver.tepi.Ui, c: Canvas, r: RectF, label: String, value: String, a: Float, end: String? = null) {
-    ui.text(c, label, ui.body, r.left, r.top + ui.dp(14f), r.width() - (if (end != null) ui.dp(90f) else 0f), a)
-    ui.text(c, value, ui.label, r.left, r.top + ui.dp(36f), r.width() - (if (end != null) ui.dp(90f) else 0f), a)
-    if (end != null) ui.textEnd(c, end, ui.body, r.right, r.top + ui.dp(36f), a)
+    ui.text(c, label, ui.body, r.left, r.top + ui.dp(12f), r.width() - (if (end != null) ui.dp(90f) else 0f), a)
+    ui.text(c, value, ui.label, r.left, r.top + ui.dp(30f), r.width() - (if (end != null) ui.dp(90f) else 0f), a)
+    if (end != null) ui.textEnd(c, end, ui.body, r.right, r.top + ui.dp(30f), a)
 }
 
 class PrayerRow(private val host: Host, private val rem: Reminders) : HomeRow {
     private val fmt = DateFormat.getTimeInstance(DateFormat.SHORT)
     override fun visible() = rem.prayOn
-    override fun height(w: Float) = host.ui.dp(44f)
+    override fun height(w: Float) = host.ui.dp(38f)
     override fun draw(c: Canvas, r: RectF, a: Float) {
         val city = rem.city() ?: return
         val (i, at) = Prayer.next(city)
@@ -34,7 +34,7 @@ class PrayerRow(private val host: Host, private val rem: Reminders) : HomeRow {
 
 class TimerRow(private val host: Host, private val timers: Timers, private val scene: TimerScene) : HomeRow {
     override fun visible() = timers.active
-    override fun height(w: Float) = host.ui.dp(44f)
+    override fun height(w: Float) = host.ui.dp(38f)
     override fun draw(c: Canvas, r: RectF, a: Float) {
         pair(host.ui, c, r, scene.describe().substringBefore(' '), host.ui.clock(timers.shownMs()), a)
     }
@@ -43,7 +43,7 @@ class TimerRow(private val host: Host, private val timers: Timers, private val s
 
 class NoteRow(private val host: Host, private val notes: Notes, private val openAll: () -> Unit) : HomeRow {
     override fun visible() = notes.all().isNotEmpty()
-    override fun height(w: Float) = host.ui.dp(44f)
+    override fun height(w: Float) = host.ui.dp(38f)
     override fun draw(c: Canvas, r: RectF, a: Float) {
         val n = notes.all().first()
         pair(host.ui, c, r, host.ctx.getString(if (n.pinned) R.string.note_pinned else R.string.note_latest), n.text.replace('\n', ' '), a)
@@ -55,17 +55,17 @@ class NoteRow(private val host: Host, private val notes: Notes, private val open
 class ShelfRow(private val host: Host, private val shelf: Shelf, private val picked: (ShelfItem) -> Unit) : HomeRow {
     private val hits = ArrayList<Pair<RectF, ShelfItem>>()
     override fun visible() = shelf.all().isNotEmpty()
-    override fun height(w: Float) = host.ui.dp(14f) + host.ui.s8 + host.ui.dp(40f)
+    override fun height(w: Float) = host.ui.dp(12f) + host.ui.s8 + host.ui.btnH
     override fun draw(c: Canvas, r: RectF, a: Float) {
         val ui = host.ui
-        ui.text(c, host.ctx.getString(R.string.shelf), ui.body, r.left, r.top + ui.dp(14f), r.width(), a)
+        ui.text(c, host.ctx.getString(R.string.shelf), ui.body, r.left, r.top + ui.dp(12f), r.width(), a)
         val items = shelf.all().take(3)
         val gap = ui.s8
         val bw = (r.width() - gap * (items.size - 1)) / items.size
-        val y = r.top + ui.dp(14f) + ui.s8
+        val y = r.top + ui.dp(12f) + ui.s8
         hits.clear()
         items.forEachIndexed { i, it ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.dp(40f))
+            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
             ui.fill(c, br, ui.radiusButton, ui.fillStrong, a)
             val label = if (it.isText) it.text!!.replace('\n', ' ') else it.name ?: "file"
             ui.centered(c, label, ui.bodyInk, br.centerX(), br.centerY(), br.width() - ui.s16, a)

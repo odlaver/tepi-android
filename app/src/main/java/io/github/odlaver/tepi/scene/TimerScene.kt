@@ -43,9 +43,9 @@ class TimerScene(host: Host, private val timers: Timers) : Scene(host) {
     }
 
     override fun panelHeight(w: Float): Float {
-        if (!timers.active) return ui.dp(20f) + ui.s12 + ui.dp(44f) * 2 + ui.s8
-        var h = ui.dp(20f) + ui.s12 + ui.dp(132f) + ui.s16 + ui.dp(44f)
-        if (timers.kind == Timers.Kind.Stopwatch && timers.laps.isNotEmpty()) h += ui.s12 + min(3, timers.laps.size) * ui.dp(22f)
+        if (!timers.active) return ui.dp(18f) + ui.s8 + ui.btnH * 2 + ui.s8
+        var h = ui.dp(18f) + ui.s8 + ui.dp(100f) + ui.s12 + ui.btnH
+        if (timers.kind == Timers.Kind.Stopwatch && timers.laps.isNotEmpty()) h += ui.s8 + min(3, timers.laps.size) * ui.dp(20f)
         return h
     }
 
@@ -53,37 +53,37 @@ class TimerScene(host: Host, private val timers: Timers) : Scene(host) {
         hits.clear()
         if (!timers.active) { picker(c, r, a); return }
         val pausedNote = if (timers.paused) " · " + host.ctx.getString(R.string.t_paused) else ""
-        ui.text(c, label() + pausedNote, ui.label, r.left, ui.baseline(ui.label, r.top + ui.dp(10f)), r.width(), a)
-        val cy = r.top + ui.dp(20f) + ui.s12 + ui.dp(66f)
-        ui.ring(c, r.centerX(), cy, ui.dp(60f), ui.dp(6f), timers.fraction(), a)
-        ui.centered(c, ui.clock(timers.shownMs()), ui.big, r.centerX(), cy, ui.dp(116f), a)
-        val y = cy + ui.dp(66f) + ui.s16
-        val items = ArrayList<Pair<String, () -> Unit>>()
-        items.add(host.ctx.getString(if (timers.paused) R.string.t_resume else R.string.t_pause) to { timers.togglePause() })
-        if (timers.kind == Timers.Kind.Stopwatch) items.add(host.ctx.getString(R.string.t_lap) to { timers.lap() })
-        else items.add(host.ctx.getString(R.string.t_plus) to { timers.plusMinute() })
-        items.add(host.ctx.getString(R.string.t_stop) to { timers.stop() })
-        row(c, r, y, items, a, primaryFirst = true)
+        ui.text(c, label() + pausedNote, ui.label, r.left, ui.baseline(ui.label, r.top + ui.dp(9f)), r.width(), a)
+        val cy = r.top + ui.dp(18f) + ui.s8 + ui.dp(50f)
+        ui.ring(c, r.centerX(), cy, ui.dp(46f), ui.dp(5f), timers.fraction(), a)
+        ui.centered(c, ui.clock(timers.shownMs()), ui.big, r.centerX(), cy, ui.dp(86f), a)
+        val y = cy + ui.dp(50f) + ui.s12
+        val items = ArrayList<Triple<String, io.github.odlaver.tepi.Icon, () -> Unit>>()
+        items.add(Triple(host.ctx.getString(if (timers.paused) R.string.t_resume else R.string.t_pause), if (timers.paused) io.github.odlaver.tepi.Icon.Play else io.github.odlaver.tepi.Icon.Pause) { timers.togglePause() })
+        if (timers.kind == Timers.Kind.Stopwatch) items.add(Triple(host.ctx.getString(R.string.t_lap), io.github.odlaver.tepi.Icon.Flag) { timers.lap() })
+        else items.add(Triple(host.ctx.getString(R.string.t_plus), io.github.odlaver.tepi.Icon.Plus) { timers.plusMinute() })
+        items.add(Triple(host.ctx.getString(R.string.t_stop), io.github.odlaver.tepi.Icon.Stop) { timers.stop() })
+        iconRow(c, r, y, items, a)
         if (timers.kind == Timers.Kind.Stopwatch && timers.laps.isNotEmpty()) {
-            var ly = y + ui.dp(44f) + ui.s12
+            var ly = y + ui.btnH + ui.s8
             timers.laps.take(3).forEachIndexed { i, ms ->
                 val n = timers.laps.size - i
-                ui.text(c, host.ctx.getString(R.string.t_lap_n, n), ui.body, r.left, ly + ui.dp(15f), r.width() / 2, a)
-                ui.textEnd(c, ui.clock(ms), ui.bodyInk, r.right, ly + ui.dp(15f), a)
-                ly += ui.dp(22f)
+                ui.text(c, host.ctx.getString(R.string.t_lap_n, n), ui.body, r.left, ly + ui.dp(14f), r.width() / 2, a)
+                ui.textEnd(c, ui.clock(ms), ui.bodyInk, r.right, ly + ui.dp(14f), a)
+                ly += ui.dp(20f)
             }
         }
     }
 
     private fun picker(c: Canvas, r: RectF, a: Float) {
-        ui.text(c, host.ctx.getString(R.string.t_start), ui.label, r.left, ui.baseline(ui.label, r.top + ui.dp(10f)), r.width(), a)
-        val y = r.top + ui.dp(20f) + ui.s12
+        ui.text(c, host.ctx.getString(R.string.t_start), ui.label, r.left, ui.baseline(ui.label, r.top + ui.dp(9f)), r.width(), a)
+        val y = r.top + ui.dp(18f) + ui.s8
         row(c, r, y, listOf(
             host.ctx.getString(R.string.t_focus_n, 25) to { timers.focus(25) },
             host.ctx.getString(R.string.t_focus_n, 50) to { timers.focus(50) },
             host.ctx.getString(R.string.t_stopwatch) to { timers.stopwatch() },
         ), a, primaryFirst = true)
-        row(c, r, y + ui.dp(44f) + ui.s8, listOf(5, 10, 15).map { m ->
+        row(c, r, y + ui.btnH + ui.s8, listOf(5, 10, 15).map { m ->
             host.ctx.getString(R.string.t_min_n, m) to { timers.countdown(m) }
         }, a, primaryFirst = false)
     }
@@ -92,8 +92,19 @@ class TimerScene(host: Host, private val timers: Timers) : Scene(host) {
         val gap = ui.s8
         val bw = (r.width() - gap * (items.size - 1)) / items.size
         items.forEachIndexed { i, (label, act) ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.dp(44f))
-            ui.button(c, br, label, a, primaryFirst && i == 0)
+            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
+            ui.button(c, br, label, a, primaryFirst && i == 0, if (i == 0 && primaryFirst) io.github.odlaver.tepi.Icon.Timer else null)
+            hits.add(br to act)
+        }
+    }
+
+    // Icon chips: first one filled
+    private fun iconRow(c: Canvas, r: RectF, y: Float, items: List<Triple<String, io.github.odlaver.tepi.Icon, () -> Unit>>, a: Float) {
+        val gap = ui.s8
+        val bw = (r.width() - gap * (items.size - 1)) / items.size
+        items.forEachIndexed { i, (label, icon, act) ->
+            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
+            ui.button(c, br, label, a, i == 0, icon)
             hits.add(br to act)
         }
     }
@@ -155,29 +166,29 @@ class AlertScene(host: Host) : Scene(host) {
 
     override fun panelHeight(w: Float): Float {
         val al = queue.firstOrNull() ?: return 0f
-        var h = ui.dp(44f)
-        if (al.actions.isNotEmpty()) h += ui.s16 + ui.dp(44f)
+        var h = ui.dp(36f)
+        if (al.actions.isNotEmpty()) h += ui.s12 + ui.btnH
         return h
     }
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
         val al = queue.firstOrNull() ?: return
-        val icon = ui.dp(44f)
+        val icon = ui.dp(36f)
         tmp.set(r.left, r.top, r.left + icon, r.top + icon)
         ui.fill(c, tmp, icon / 2, ui.fill, a)
         ui.solid.color = ui.alpha(ui.ink, a)
         drawGlyph(c, al.glyph, tmp.centerX(), tmp.centerY(), icon * 0.42f)
         val tx = r.left + icon + ui.s12
-        ui.text(c, al.title, ui.title, tx, r.top + ui.dp(19f), r.right - tx, a)
-        ui.text(c, al.body, ui.body, tx, r.top + ui.dp(39f), r.right - tx, a)
+        ui.text(c, al.title, ui.title, tx, r.top + ui.dp(15f), r.right - tx, a)
+        ui.text(c, al.body, ui.body, tx, r.top + ui.dp(32f), r.right - tx, a)
         hits.clear()
         if (al.actions.isEmpty()) return
-        val y = r.top + icon + ui.s16
+        val y = r.top + icon + ui.s12
         val gap = ui.s8
         val bw = (r.width() - gap * (al.actions.size - 1)) / al.actions.size
         al.actions.forEachIndexed { i, act ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.dp(44f))
-            ui.button(c, br, act.label, a, act.primary)
+            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
+            ui.button(c, br, act.label, a, act.primary, act.icon)
             hits.add(br to act)
         }
     }

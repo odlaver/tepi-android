@@ -168,4 +168,22 @@
     <string name="save_to_tepi">Simpan ke Tepi</string>
     <string name="shortcut_focus">Fokus 25</string>
     <string name="shortcut_note">Catatan baru</string>
+    <string name="b_silent">Senyap</string>
+    <string name="b_vibrate">Getar</string>
+    <string name="b_ring">Dering</string>
+    <string name="b_audio">Tersambung</string>
+    <string name="cd_cam">Kamera sedang dipakai</string>
+    <string name="cd_mic">Mikrofon sedang dipakai</string>
+    <string name="call_incoming">Panggilan masuk</string>
+    <string name="open_maps">Buka Maps</string>
+    <string name="low_battery">Baterai %1$d%%</string>
+    <string name="low_battery_body">Segera isi daya</string>
+    <string name="k_unreachable">Kulia tidak terjangkau</string>
+    <string name="k_wait">Kode baru bisa diminta lagi dalam ±1 menit</string>
+    <string name="k_unknown_email">Email ini belum terdaftar di Kulia</string>
+    <string name="k_send_failed">Kode gagal terkirim</string>
+    <string name="k_bad_code">Kode salah atau kedaluwarsa</string>
+    <string name="k_signed_out">Belum masuk ke Kulia</string>
+    <string name="k_expired">Sesi Kulia habis. Masuk lagi.</string>
+    <string name="k_trouble">Kulia sedang bermasalah</string>
 </resources>

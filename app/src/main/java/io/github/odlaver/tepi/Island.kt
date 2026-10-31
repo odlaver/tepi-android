@@ -234,17 +234,17 @@ class Island(
     private fun homeActions(): List<Action> {
         val out = ArrayList<Action>()
         for (f in homeExtras) f()?.let { out.add(it) }
-        out.add(Action(context.getString(R.string.settings)) { open(Intent(context, MainActivity::class.java)); collapse() })
+        out.add(Action(context.getString(R.string.settings), icon = Icon.Gear) { open(Intent(context, MainActivity::class.java)); collapse() })
         return out.take(3)
     }
 
     private fun menuItems(): List<Action> {
         val out = ArrayList<Action>()
         for (f in menuExtras) f()?.let { out.add(it) }
-        out.add(Action(context.getString(R.string.home)) { main.post { openHome() } })
-        if (hiddenUntil > SystemClock.uptimeMillis()) out.add(Action(context.getString(R.string.unhide)) { hiddenUntil = 0; refresh() })
-        else out.add(Action(context.getString(R.string.hide_hour)) { hiddenUntil = SystemClock.uptimeMillis() + 3_600_000L; refresh() })
-        out.add(Action(context.getString(R.string.settings)) { open(Intent(context, MainActivity::class.java)) })
+        out.add(Action(context.getString(R.string.home), icon = Icon.Home) { main.post { openHome() } })
+        if (hiddenUntil > SystemClock.uptimeMillis()) out.add(Action(context.getString(R.string.unhide), icon = Icon.Eye) { hiddenUntil = 0; refresh() })
+        else out.add(Action(context.getString(R.string.hide_hour), icon = Icon.Hide) { hiddenUntil = SystemClock.uptimeMillis() + 3_600_000L; refresh() })
+        out.add(Action(context.getString(R.string.settings), icon = Icon.Gear) { open(Intent(context, MainActivity::class.java)) })
         return out
     }
 
@@ -629,8 +629,9 @@ class Island(
                 else primary?.let { if (!it.tapCompact()) expand(it) }
             }
             Kind.Panel -> {
-                armClose()
-                primary?.tap(x, y)
+                // Neck around the camera toggles closed
+                if (y < statusBottom) { if (opened != null) collapse() else primary?.dismiss() }
+                else { armClose(); primary?.tap(x, y) }
             }
         }
         refresh()

@@ -171,4 +171,22 @@
     <string name="save_to_tepi">Save to Tepi</string>
     <string name="shortcut_focus">Focus 25</string>
     <string name="shortcut_note">New note</string>
+    <string name="b_silent">Silent</string>
+    <string name="b_vibrate">Vibrate</string>
+    <string name="b_ring">Ring</string>
+    <string name="b_audio">Connected</string>
+    <string name="cd_cam">Camera in use</string>
+    <string name="cd_mic">Microphone in use</string>
+    <string name="call_incoming">Incoming call</string>
+    <string name="open_maps">Open Maps</string>
+    <string name="low_battery">Battery %1$d%%</string>
+    <string name="low_battery_body">Plug in soon</string>
+    <string name="k_unreachable">Kulia is unreachable</string>
+    <string name="k_wait">A new code can be requested in about a minute</string>
+    <string name="k_unknown_email">This email is not registered in Kulia</string>
+    <string name="k_send_failed">The code could not be sent</string>
+    <string name="k_bad_code">Wrong or expired code</string>
+    <string name="k_signed_out">Not signed in to Kulia</string>
+    <string name="k_expired">Kulia session ended. Sign in again.</string>
+    <string name="k_trouble">Kulia is having trouble</string>
 </resources>

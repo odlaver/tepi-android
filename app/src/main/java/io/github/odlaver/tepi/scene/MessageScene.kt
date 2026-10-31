@@ -69,17 +69,17 @@ class MessageScene(host: Host) : Scene(host) {
 
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {
         val m = queue.firstOrNull() ?: return
-        val s = min(left.height(), ui.dp(26f))
+        val s = min(left.height(), ui.dp(22f))
         tmp.set(left.left, left.centerY() - s / 2, left.left + s, left.centerY() + s / 2)
         ui.art(c, m.icon, tmp, a, 0.5f)
     }
 
     override fun panelHeight(w: Float): Float {
         val m = queue.firstOrNull() ?: return 0f
-        val textW = w - ui.dp(40f) - ui.s12
+        val textW = w - ui.dp(36f) - ui.s12
         val textH = ui.title.fontSpacing + (if (m.text.isEmpty()) 0f else body(m, textW).height.toFloat())
-        var h = max(ui.dp(40f), textH)
-        if (buttons(m).isNotEmpty()) h += ui.s16 + ui.dp(40f)
+        var h = max(ui.dp(36f), textH)
+        if (buttons(m).isNotEmpty()) h += ui.s12 + ui.btnH
         return h
     }
 
@@ -103,7 +103,7 @@ class MessageScene(host: Host) : Scene(host) {
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
         val m = queue.firstOrNull() ?: return
-        val icon = ui.dp(40f)
+        val icon = ui.dp(36f)
         tmp.set(r.left, r.top, r.left + icon, r.top + icon)
         ui.art(c, m.icon, tmp, a, 0.5f)
         val tx = r.left + icon + ui.s12
@@ -127,12 +127,13 @@ class MessageScene(host: Host) : Scene(host) {
         hits.clear()
         val bs = buttons(m)
         if (bs.isEmpty()) return
-        val y = max(r.top + icon, bottom) + ui.s16
+        val y = max(r.top + icon, bottom) + ui.s12
         val gap = ui.s8
         val bw = (r.width() - gap * (bs.size - 1)) / bs.size
         bs.forEachIndexed { i, (label, act) ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.dp(40f))
-            ui.button(c, br, label, a, primary = i == 0 && m.reply != null)
+            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
+            val isReply = i == 0 && m.reply != null
+            ui.button(c, br, label, a, primary = isReply, icon = if (isReply) io.github.odlaver.tepi.Icon.Reply else null)
             hits.add(br to act)
         }
     }

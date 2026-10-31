@@ -74,38 +74,39 @@ abstract class Page : Activity() {
                 setOnClickListener { finish() }
             }, LinearLayout.LayoutParams(dpi(48f), dpi(48f)).apply { marginStart = -dpi(12f) })
         }
-        row.addView(text(title, 26f, ink, bold = true))
+        row.addView(text(title, 22f, ink, bold = true))
         col.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { bottomMargin = dpi(8f) })
     }
 
-    protected fun label(s: String) = col.addView(text(s, 13f, sub).apply { setPadding(dpi(4f), dpi(24f), 0, dpi(8f)) })
+    protected fun label(s: String) = col.addView(text(s, 12f, sub).apply { setPadding(dpi(4f), dpi(20f), 0, dpi(6f)) })
 
-    protected fun note(s: String) = col.addView(text(s, 13f, sub).apply { setPadding(dpi(4f), dpi(8f), dpi(4f), 0) })
+    protected fun note(s: String) = col.addView(text(s, 12f, sub).apply { setPadding(dpi(4f), dpi(6f), dpi(4f), 0) })
 
     protected fun group(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        background = GradientDrawable().apply { setColor(fill); cornerRadius = dp(16f) }
+        background = GradientDrawable().apply { setColor(fill); cornerRadius = dp(14f) }
         col.addView(this)
     }
 
     protected fun line(g: LinearLayout) {
         if (g.childCount == 0) return
         g.addView(View(this).apply { setBackgroundColor(withAlpha(ink, 24)) },
-            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxOf(1, dpi(0.5f))).apply { marginStart = dpi(16f) })
+            LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, maxOf(1, dpi(0.5f))).apply { marginStart = dpi(14f) })
     }
 
     // Title, detail, optional trailing view; tappable when onClick set
-    protected fun row(g: LinearLayout, title: String, detail: String? = null, trailing: View? = null, onClick: (() -> Unit)? = null): LinearLayout {
+    protected fun row(g: LinearLayout, title: String, detail: String? = null, trailing: View? = null, icon: Icon? = null, onClick: (() -> Unit)? = null): LinearLayout {
         line(g)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            minimumHeight = dpi(56f)
-            setPadding(dpi(16f), dpi(12f), dpi(16f), dpi(12f))
+            minimumHeight = dpi(48f)
+            setPadding(dpi(14f), dpi(10f), dpi(14f), dpi(10f))
         }
+        if (icon != null) box.addView(glyph(icon), LinearLayout.LayoutParams(dpi(20f), dpi(20f)).apply { marginEnd = dpi(12f) })
         val texts = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        texts.addView(text(title, 16f, ink))
-        if (!detail.isNullOrEmpty()) texts.addView(text(detail, 13f, sub).apply { setPadding(0, dpi(2f), 0, 0) })
+        texts.addView(text(title, 14f, ink))
+        if (!detail.isNullOrEmpty()) texts.addView(text(detail, 12f, sub).apply { setPadding(0, dpi(1f), 0, 0) })
         box.addView(texts, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dpi(12f) })
         if (trailing != null) box.addView(trailing)
         if (onClick != null) {
@@ -118,10 +119,10 @@ abstract class Page : Activity() {
     }
 
     // Row that opens a list of choices
-    protected fun <T> choice(g: LinearLayout, title: String, options: List<Pair<T, String>>, current: T, set: (T) -> Unit) {
+    protected fun <T> choice(g: LinearLayout, title: String, options: List<Pair<T, String>>, current: T, icon: Icon? = null, set: (T) -> Unit) {
         val shown = options.firstOrNull { it.first == current }?.second ?: ""
-        val value = text(shown, 14f, sub)
-        row(g, title, null, value) {
+        val value = text(shown, 13f, sub)
+        row(g, title, null, value, icon) {
             val labels = options.map { it.second }.toTypedArray()
             val idx = options.indexOfFirst { it.first == current }
             AlertDialog.Builder(this).setTitle(title).setSingleChoiceItems(labels, idx) { d, which ->
@@ -132,39 +133,44 @@ abstract class Page : Activity() {
         }
     }
 
-    protected fun toggle(g: LinearLayout, title: String, detail: String?, on: Boolean, enabled: Boolean = true, set: (Boolean) -> Unit): Switch {
+    protected fun toggle(g: LinearLayout, title: String, detail: String?, on: Boolean, enabled: Boolean = true, icon: Icon? = null, set: (Boolean) -> Unit): Switch {
         line(g)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dpi(16f), dpi(8f), dpi(16f), if (detail.isNullOrEmpty()) dpi(8f) else dpi(14f))
+            setPadding(dpi(14f), dpi(4f), dpi(14f), if (detail.isNullOrEmpty()) dpi(4f) else dpi(10f))
         }
         val sw = Switch(this).apply {
             text = title
-            textSize = 16f
+            textSize = 14f
+            if (icon != null) {
+                setCompoundDrawablesRelative(IconDrawable(icon, ink, dpi(20f)).apply { setBounds(0, 0, dpi(20f), dpi(20f)) }, null, null, null)
+                compoundDrawablePadding = dpi(12f)
+            }
             setTextColor(ink)
             isChecked = on
             isEnabled = enabled
-            minHeight = dpi(48f)
+            minHeight = dpi(44f)
             val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
             thumbTintList = ColorStateList(states, intArrayOf(ink, blend(ink, paper, 0.55f)))
             trackTintList = ColorStateList(states, intArrayOf(ink, withAlpha(ink, 150)))
             setOnCheckedChangeListener { _, v -> set(v) }
         }
         box.addView(sw)
-        if (!detail.isNullOrEmpty()) box.addView(text(detail, 13f, sub).apply { setPadding(0, 0, dpi(64f), 0) })
+        if (!detail.isNullOrEmpty()) box.addView(text(detail, 12f, sub).apply { setPadding(if (icon != null) dpi(32f) else 0, 0, dpi(60f), 0) })
         g.addView(box)
         return sw
     }
 
-    protected fun slider(g: LinearLayout, title: String, min: Int, max: Int, value: Int, fmt: (Int) -> String, changed: (Int) -> Unit) {
+    protected fun slider(g: LinearLayout, title: String, min: Int, max: Int, value: Int, fmt: (Int) -> String, icon: Icon? = null, changed: (Int) -> Unit) {
         line(g)
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dpi(16f), dpi(14f), dpi(16f), dpi(8f))
+            setPadding(dpi(14f), dpi(12f), dpi(14f), dpi(4f))
         }
-        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
-        top.addView(text(title, 16f, ink), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-        val v = text(fmt(value), 14f, sub).apply { fontFeatureSettings = "tnum" }
+        val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        if (icon != null) top.addView(glyph(icon), LinearLayout.LayoutParams(dpi(20f), dpi(20f)).apply { marginEnd = dpi(12f) })
+        top.addView(text(title, 14f, ink), LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+        val v = text(fmt(value), 13f, sub).apply { fontFeatureSettings = "tnum" }
         top.addView(v)
         box.addView(top)
         box.addView(SeekBar(this).apply {
@@ -172,7 +178,7 @@ abstract class Page : Activity() {
             this.max = max
             progress = value
             contentDescription = title
-            setPadding(0, dpi(12f), 0, dpi(12f))
+            setPadding(0, dpi(10f), 0, dpi(10f))
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(s: SeekBar, p: Int, fromUser: Boolean) {
                     if (!fromUser) return
@@ -187,15 +193,21 @@ abstract class Page : Activity() {
     }
 
     // Ink-filled button
-    protected fun button(label: String, primary: Boolean = true, onClick: () -> Unit): TextView = text(label, 14f, if (primary) paper else ink, bold = true).apply {
+    protected fun button(label: String, primary: Boolean = true, icon: Icon? = null, onClick: () -> Unit): TextView = text(label, 13f, if (primary) paper else ink, bold = true).apply {
         gravity = Gravity.CENTER
-        minHeight = dpi(44f)
-        minWidth = dpi(88f)
-        setPadding(dpi(16f), 0, dpi(16f), 0)
+        minHeight = dpi(36f)
+        minWidth = dpi(64f)
+        setPadding(dpi(14f), 0, dpi(14f), 0)
+        if (icon != null) {
+            setCompoundDrawablesRelative(IconDrawable(icon, if (primary) paper else ink, dpi(16f)).apply { setBounds(0, 0, dpi(16f), dpi(16f)) }, null, null, null)
+            compoundDrawablePadding = dpi(6f)
+        }
         isFocusable = true
-        background = ripple(GradientDrawable().apply { setColor(if (primary) ink else fill); cornerRadius = dp(12f) })
+        background = ripple(GradientDrawable().apply { setColor(if (primary) ink else fill); cornerRadius = dp(10f) })
         setOnClickListener { onClick() }
     }
+
+    protected fun glyph(icon: Icon) = View(this).apply { background = IconDrawable(icon, ink, dpi(20f)) }
 
     protected fun addButton(view: View, top: Float = 16f) {
         col.addView(view, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dpi(top) })

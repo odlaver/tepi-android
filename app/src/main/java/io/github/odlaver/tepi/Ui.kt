@@ -33,11 +33,13 @@ class Ui(context: Context) {
 
     // Island frame
     val edge = s16
-    val pad = s20
-    val panelMax = dp(400f)
-    val radiusPanel = dp(28f)
-    val radiusRow = dp(16f)
-    val radiusButton = dp(14f)
+    val pad = s16
+    val panelMax = dp(380f)
+    val radiusPanel = dp(24f)
+    val radiusRow = dp(14f)
+    val radiusButton = dp(12f)
+    val btnH = dp(36f)
+    val iconS = dp(18f)
 
     // Tone.Dark from Tepi Windows
     val ink = Color.rgb(245, 245, 247)
@@ -47,16 +49,16 @@ class Ui(context: Context) {
     val fillStrong = Color.argb(46, 255, 255, 255)
     val line = Color.argb(23, 255, 255, 255)
 
-    val title = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(15f); typeface = Typeface.DEFAULT_BOLD }
-    val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = sub; textSize = sp(13f) }
-    val bodyInk = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(13f) }
-    val small = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = faint; textSize = sp(11f); fontFeatureSettings = "tnum" }
-    val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(13f); typeface = Typeface.DEFAULT_BOLD }
-    val labelDark = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = sp(13f); typeface = Typeface.DEFAULT_BOLD }
-    val compact = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(13f); typeface = Typeface.DEFAULT_BOLD; fontFeatureSettings = "tnum" }
-    val lyric = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(13.5f); typeface = Typeface.DEFAULT_BOLD }
-    val big = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(34f); typeface = Typeface.DEFAULT_BOLD; fontFeatureSettings = "tnum" }
-    val heading = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(20f); typeface = Typeface.DEFAULT_BOLD }
+    val title = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(14f); typeface = Typeface.DEFAULT_BOLD }
+    val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = sub; textSize = sp(12f) }
+    val bodyInk = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f) }
+    val small = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = faint; textSize = sp(10f); fontFeatureSettings = "tnum" }
+    val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f); typeface = Typeface.DEFAULT_BOLD }
+    val labelDark = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = sp(12f); typeface = Typeface.DEFAULT_BOLD }
+    val compact = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f); typeface = Typeface.DEFAULT_BOLD; fontFeatureSettings = "tnum" }
+    val lyric = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12.5f); typeface = Typeface.DEFAULT_BOLD }
+    val big = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(26f); typeface = Typeface.DEFAULT_BOLD; fontFeatureSettings = "tnum" }
+    val heading = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(16f); typeface = Typeface.DEFAULT_BOLD }
 
     val solid = Paint(Paint.ANTI_ALIAS_FLAG)
     val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
@@ -119,10 +121,25 @@ class Ui(context: Context) {
         img.shader = null
     }
 
-    // Pill button; primary is ink-filled
-    fun button(c: Canvas, r: RectF, text: String, a: Float, primary: Boolean = false) {
+    fun icon(c: Canvas, i: Icon, cx: Float, cy: Float, size: Float, color: Int, a: Float) = Icons.draw(c, i, cx, cy, size, alpha(color, a))
+
+    // Chip: optional icon, then label; primary is ink-filled
+    fun button(c: Canvas, r: RectF, text: String, a: Float, primary: Boolean = false, icon: Icon? = null) {
         fill(c, r, radiusButton, if (primary) ink else fill, a)
-        centered(c, text, if (primary) labelDark else label, r.centerX(), r.centerY(), r.width() - s16, a)
+        val p = if (primary) labelDark else label
+        val fg = if (primary) Color.BLACK else ink
+        if (icon == null) { centered(c, text, p, r.centerX(), r.centerY(), r.width() - s16, a); return }
+        if (text.isEmpty()) { this.icon(c, icon, r.centerX(), r.centerY(), iconS, fg, a); return }
+        val gap = dp(6f)
+        val room = r.width() - s16 - iconS - gap
+        val t = TextUtils.ellipsize(text, p, max(0f, room), TextUtils.TruncateAt.END)
+        val w = iconS + gap + p.measureText(t, 0, t.length)
+        val x = r.centerX() - w / 2
+        this.icon(c, icon, x + iconS / 2, r.centerY(), iconS, fg, a)
+        val base = p.alpha
+        p.alpha = (255 * a).toInt()
+        c.drawText(t, 0, t.length, x + iconS + gap, baseline(p, r.centerY()), p)
+        p.alpha = base
     }
 
     // Progress ring, frac 0..1 clockwise from top
