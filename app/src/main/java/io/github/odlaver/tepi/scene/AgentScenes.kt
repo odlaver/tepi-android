@@ -15,14 +15,14 @@ import io.github.odlaver.tepi.R
 import kotlin.math.max
 
 // Permission request from an agent on the laptop
-class AgentScene(host: Host, private val pc: Pc, private val native: () -> Boolean = { false }) : Scene(host) {
+class AgentScene(host: Host, private val pc: Pc) : Scene(host) {
     override val id = "agent"
     override val priority = 100
     private val hits = ArrayList<Pair<RectF, () -> Unit>>()
     private val tmp = RectF()
     private val mono by lazy { TextPaint(ui.bodyInk).apply { typeface = Typeface.MONOSPACE; textSize = ui.sp(11f) } }
 
-    override fun live() = pc.asks.isNotEmpty() && !native()
+    override fun live() = pc.asks.isNotEmpty()
     override fun card() = true
 
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}

@@ -62,6 +62,4 @@ kotlin {
 dependencies {
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:language-id:17.0.6")
-    // HyperOS Super Island payloads (Apache-2.0)
-    implementation("io.github.d4viddf:hyperisland_kit:0.4.5")
 }

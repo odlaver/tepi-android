@@ -64,14 +64,16 @@ class Listener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
+        // Leftovers from the old HyperOS island mode
+        try { getSystemService(NotificationManager::class.java).cancelAll() } catch (_: Exception) { }
         lyrics = Lyrics(java.io.File(cacheDir, "lyrics"))
         notes = Notes(this)
         shelf = Shelf(this)
-        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh(); syncNative() })
+        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
         agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
-        pc = Pc(agenda.vault, prefs) { island?.refresh(); syncAsk() }
-        live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh(); syncProgress() }
+        pc = Pc(agenda.vault, prefs) { island?.refresh() }
+        live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh() }
         watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, privacy = { cam, mic ->
             privacyScene?.let { it.cam = cam; it.mic = mic }
             island?.refresh()
@@ -156,7 +158,7 @@ class Listener : NotificationListenerService() {
     // Features into a fresh island
     private fun wire(isl: Island) {
         val al = AlertScene(isl)
-        val ts = TimerScene(isl, timers) { Native.on(this, prefs) }
+        val ts = TimerScene(isl, timers)
         alerts = al
         timerScene = ts
         isl.register(al)
@@ -167,14 +169,14 @@ class Listener : NotificationListenerService() {
         privacyScene = pv
         isl.register(br)
         isl.register(pv)
-        isl.register(AgentScene(isl, pc) { Native.on(this, prefs) })
+        isl.register(AgentScene(isl, pc))
         translateScene = io.github.odlaver.tepi.scene.TranslateScene(isl).also { isl.register(it) }
         isl.home.rows.add(AgentRow(isl, pc))
         isl.register(IncomingScene(isl, live))
         isl.register(CallScene(isl, live))
         isl.register(NavScene(isl, live))
         isl.register(ClockScene(isl, live))
-        isl.register(ProgressScene(isl, live) { Native.on(this, prefs) })
+        isl.register(ProgressScene(isl, live))
         isl.home.rows.add(0, TimerRow(isl, timers, ts))
         isl.home.rows.add(1, ClassRow(isl, agenda))
         isl.home.rows.add(2, PrayerRow(isl, reminders))
@@ -216,48 +218,8 @@ class Listener : NotificationListenerService() {
     }
 
     private fun alert(a: Alert) {
-        // Plain cards go to the system island when it is on
-        if (a.actions.isEmpty() && Native.on(this, prefs)) {
-            Native.alert(this, a.title, a.body, glyphIcon(a.glyph), a.ms)
-            return
-        }
         ensureIsland()
         alerts?.show(a)
-    }
-
-    private fun glyphIcon(g: Glyph) = when (g) {
-        Glyph.Bell -> Icon.Bell
-        Glyph.Moon -> Icon.Moon
-        Glyph.Drop -> Icon.Drop
-        Glyph.Eye -> Icon.Eye
-        Glyph.Stretch -> Icon.Stretch
-        Glyph.Bolt -> Icon.Bolt
-        Glyph.Book -> Icon.Book
-        Glyph.Check -> Icon.Check
-    }
-
-    private val shownProgress = HashSet<Int>()
-    private val recentMessages = LinkedHashMap<String, Message>()
-
-    // Downloads in the system island; drop finished ones
-    private fun syncProgress() {
-        val on = prefs.enabled && Native.on(this, prefs)
-        val now = HashSet<Int>()
-        if (on) for (it in live.of(LiveKind.Progress)) { Native.progress(this, it); now.add(Native.progressId(it.key)) }
-        for (id in shownProgress - now) Native.cancel(this, id)
-        shownProgress.clear(); shownProgress.addAll(now)
-    }
-
-    // First pending agent request, or nothing
-    private fun syncAsk() {
-        val first = pc.asks.firstOrNull()
-        if (first != null && prefs.enabled && Native.on(this, prefs)) Native.ask(this, first) else Native.cancel(this, Native.ASK_ID)
-    }
-
-    // Timer in the system island, or nowhere
-    fun syncNative() {
-        if (prefs.enabled && Native.on(this, prefs) && timers.active) Native.timer(this, timers)
-        else Native.cancel(this, Native.TIMER_ID)
     }
 
     private fun classSoon(s: ClassSlot) {
@@ -314,7 +276,6 @@ class Listener : NotificationListenerService() {
     }
 
     fun prefsChanged() {
-        syncNative()
         island?.prefsChanged()
     }
 
@@ -332,10 +293,7 @@ class Listener : NotificationListenerService() {
             "focus" -> timers.focus(25)
             "timer" -> timerScene?.let { isl.expand(it) }
             "note" -> newNote()
-            else -> if (what.startsWith("reply:")) {
-                val m = recentMessages[what.removePrefix("reply:")] ?: return false
-                isl.messages.replyTo(m)
-            } else return false
+            else -> return false
         }
         return true
     }
@@ -375,11 +333,7 @@ class Listener : NotificationListenerService() {
         val others = if (reveal) n.actions?.filter { it !== reply && it.remoteInputs.isNullOrEmpty() && it.actionIntent != null }?.take(2).orEmpty() else emptyList()
         val built = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others, app, badge, sbn.postTime)
         else Message(sbn.key, app, getString(R.string.new_message), badge, n.contentIntent, app = app, appIcon = badge, at = sbn.postTime)
-        recentMessages.remove(built.key)
-        recentMessages[built.key] = built
-        while (recentMessages.size > 20) recentMessages.remove(recentMessages.keys.first())
-        // System island when on; Tepi's card otherwise
-        if (Native.on(this, prefs)) Native.message(this, built) else isl.show(built)
+        isl.show(built)
     }
 
     private fun isMessage(n: Notification): Boolean {

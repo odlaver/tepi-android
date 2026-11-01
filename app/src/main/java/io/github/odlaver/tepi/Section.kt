@@ -36,7 +36,6 @@ class Section : Page() {
             changed()
             Listener.instance?.test()
         }
-        nativeEngine()
         label(getString(R.string.gestures))
         val h = group()
         for ((t, d, i) in listOf(
@@ -48,37 +47,6 @@ class Section : Page() {
             Triple(R.string.triggers, R.string.triggers_sub, Icon.Info),
         )) row(h, getString(t), getString(d), icon = i)
         addButton(button(getString(R.string.test), icon = Icon.Play) { Listener.instance?.test() }, 12f)
-    }
-
-    // HyperOS Super Island: shown only where it exists
-    private fun nativeEngine() {
-        if (!Native.hasIsland()) return
-        label(getString(R.string.native_title))
-        val g = group()
-        when {
-            Native.protocol(this) < 3 -> row(g, getString(R.string.native_old), null, icon = Icon.Info)
-            !Native.canPost(this) -> row(g, getString(R.string.native_notif), getString(R.string.native_notif_sub), button(getString(R.string.grant)) {
-                if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
-                else openAppNotifications()
-            }, Icon.Bell)
-            !Native.featured(this) -> row(g, getString(R.string.native_featured), getString(R.string.native_featured_sub), button(getString(R.string.open)) {
-                openAppNotifications()
-            }, Icon.Spark)
-            else -> {
-                toggle(g, getString(R.string.native_use), getString(R.string.native_use_sub), prefs.bool("engine.native", true), icon = Icon.Layers) {
-                    prefs.set("engine.native", it); changed(); Listener.instance?.syncNative(); rebuild()
-                }
-            }
-        }
-    }
-
-    private fun openAppNotifications() {
-        startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))
-    }
-
-    override fun onResume() {
-        super.onResume()
-        if (intent.getStringExtra(MODE) == ISLAND) rebuild()
     }
 
     private fun activities() {

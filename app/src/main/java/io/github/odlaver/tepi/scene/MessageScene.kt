@@ -181,9 +181,6 @@ class MessageScene(host: Host) : Scene(host) {
         return false
     }
 
-    // From the system island's Reply button
-    fun replyTo(m: Message) { m.reply?.let { reply(m, it) } }
-
     private fun reply(m: Message, action: Notification.Action) {
         replying = true
         main.removeCallbacks(drop)

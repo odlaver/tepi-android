@@ -299,15 +299,6 @@
     <string name="just_now">now</string>
     <string name="mins_ago">%1$d min</string>
     <string name="n_more">%1$d more</string>
-    <string name="channel_island">Island activities</string>
-    <string name="native_title">HyperOS island</string>
-    <string name="native_old">This HyperOS version has no Super Island for other apps</string>
-    <string name="native_notif">Allow notifications</string>
-    <string name="native_notif_sub">The Super Island is fed through Tepi\'s own notifications.</string>
-    <string name="native_featured">Turn on Featured notifications</string>
-    <string name="native_featured_sub">In Tepi\'s notification settings. HyperOS only puts apps with this switch in the Super Island.</string>
-    <string name="native_use">Use the Super Island</string>
-    <string name="native_use_sub">Timer and reminders appear in HyperOS\'s own island instead of Tepi\'s.</string>
     <string name="apps">Apps</string>
     <string name="apps_sub">Turn an app off and Tepi ignores its notifications: no message cards, calls, downloads, or navigation from it.</string>
     <string name="apps_row_sub">Choose whose notifications Tepi reads</string>

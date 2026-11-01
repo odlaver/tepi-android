@@ -296,15 +296,6 @@
     <string name="just_now">baru</string>
     <string name="mins_ago">%1$d mnt</string>
     <string name="n_more">%1$d lainnya</string>
-    <string name="channel_island">Aktivitas island</string>
-    <string name="native_title">Island HyperOS</string>
-    <string name="native_old">Versi HyperOS ini belum membuka Super Island untuk aplikasi lain</string>
-    <string name="native_notif">Izinkan notifikasi</string>
-    <string name="native_notif_sub">Super Island diisi lewat notifikasi milik Tepi.</string>
-    <string name="native_featured">Nyalakan Notifikasi unggulan</string>
-    <string name="native_featured_sub">Di pengaturan notifikasi Tepi. HyperOS hanya menaruh aplikasi dengan sakelar ini di Super Island.</string>
-    <string name="native_use">Pakai Super Island</string>
-    <string name="native_use_sub">Timer dan pengingat tampil di island bawaan HyperOS, bukan island Tepi.</string>
     <string name="apps">Aplikasi</string>
     <string name="apps_sub">Matikan aplikasi dan Tepi mengabaikan notifikasinya: tidak ada kartu pesan, panggilan, unduhan, atau navigasi darinya.</string>
     <string name="apps_row_sub">Pilih notifikasi aplikasi mana yang dibaca Tepi</string>
