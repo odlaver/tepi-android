@@ -17,6 +17,8 @@ import kotlin.math.sin
 class MusicScene(host: Host, private val media: Media, private val prefs: Prefs, private val lyrics: Lyrics) : Scene(host) {
     override val id = "music"
     override val priority = 40
+    override val order = 1
+    private val hitOpen = RectF()
 
     private val main = Handler(Looper.getMainLooper())
     private var song: SongLyrics? = null
@@ -40,6 +42,7 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
 
     fun changed() {
         val tr = media.track
+        if (tr != null && prefs.str("music.pkg", "") != tr.pkg) prefs.set("music.pkg", tr.pkg)
         if (tr == null || tr.key != songKey) {
             song = null
             lyricIdx = -1
@@ -77,8 +80,8 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
     // Has a track at all, for Home
     fun present() = media.track != null
 
-    override fun tab() = present() && prefs.music
-    override fun keepOpen() = present()
+    override fun tab() = prefs.music
+    override fun keepOpen() = true
 
     override fun dismiss() { dismissedKey = media.track?.key }
 
@@ -143,13 +146,25 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
     private fun hasLyrics() = prefs.lyrics && song?.lines?.isNotEmpty() == true
 
     override fun panelHeight(w: Float): Float {
+        if (media.track == null) return ui.dp(18f) + ui.s12 + ui.dp(36f) + ui.s12 + ui.btnH
         var h = ui.dp(48f) + ui.dp(16f) + ui.dp(4f) + ui.dp(18f) + ui.dp(4f) + ui.dp(44f)
         if (hasLyrics()) h += ui.dp(8f) + ui.dp(38f)
         return h
     }
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
-        val tr = media.track ?: return
+        val tr = media.track
+        if (tr == null) {
+            // Nothing playing: one way to start
+            ui.icon(c, io.github.odlaver.tepi.Icon.Music, r.left + ui.dp(9f), r.top + ui.dp(9f), ui.dp(16f), ui.sub, a)
+            ui.text(c, host.ctx.getString(R.string.music), ui.label, r.left + ui.dp(26f), ui.baseline(ui.label, r.top + ui.dp(9f)), r.width(), a)
+            val y = r.top + ui.dp(18f) + ui.s12
+            ui.text(c, host.ctx.getString(R.string.music_idle), ui.body, r.left, y + ui.dp(16f), r.width(), a)
+            hitOpen.set(r.left, y + ui.dp(36f) + ui.s12, r.right, y + ui.dp(36f) + ui.s12 + ui.btnH)
+            ui.button(c, hitOpen, host.ctx.getString(R.string.open_player), a, true, io.github.odlaver.tepi.Icon.Play)
+            return
+        }
+        hitOpen.setEmpty()
         val art = ui.dp(48f)
         tmp.set(r.left, r.top, r.left + art, r.top + art)
         ui.art(c, tr.art, tmp, a)
@@ -191,6 +206,15 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
     }
 
     override fun tap(x: Float, y: Float): Boolean {
+        if (media.track == null) {
+            if (!hitOpen.contains(x, y)) return false
+            val last = prefs.str("music.pkg", "")
+            val i = (if (last.isNotEmpty()) host.ctx.packageManager.getLaunchIntentForPackage(last) else null)
+                ?: android.content.Intent.makeMainSelectorActivity(android.content.Intent.ACTION_MAIN, android.content.Intent.CATEGORY_APP_MUSIC)
+            host.open(i)
+            host.collapse()
+            return true
+        }
         when {
             hitPlay.contains(x, y) -> media.toggle()
             hitPrev.contains(x, y) -> media.prev()

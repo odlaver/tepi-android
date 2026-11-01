@@ -27,6 +27,9 @@ abstract class Scene(protected val host: Host) {
     abstract val id: String
     open val priority = 0
 
+    // Position among swipe tabs, low first
+    open val order = 50
+
     // Shown without being opened
     abstract fun live(): Boolean
 

@@ -314,4 +314,24 @@
     <string name="apps_recent">Sent notifications recently</string>
     <string name="apps_all">Other apps</string>
     <string name="search">Search</string>
+    <string name="tab_agenda">Agenda</string>
+    <string name="agenda_empty">Classes and tasks appear here once Kulia, Todoist, Notion, or a calendar is connected.</string>
+    <string name="connect_now">Connect</string>
+    <string name="agenda_clear">No classes today and no tasks due</string>
+    <string name="cancelled">Cancelled</string>
+    <string name="exam">Exam</string>
+    <string name="tab_prayer">Prayer</string>
+    <string name="prayer_off">Prayer times are off. Pick a city to see today\'s times here.</string>
+    <string name="see_all">See all</string>
+    <string name="shelf_tab_empty">Share text or a file to Tepi, or select text and pick Save to Tepi.</string>
+    <string name="shelf_text">Text · tap to copy</string>
+    <string name="shelf_file">File · tap to open</string>
+    <string name="online">online</string>
+    <string name="agents_idle">No agent sessions on the laptop</string>
+    <string name="st_working">working</string>
+    <string name="st_waiting">waiting</string>
+    <string name="st_done">done</string>
+    <string name="st_ready">ready</string>
+    <string name="music_idle">Nothing is playing</string>
+    <string name="open_player">Open player</string>
 </resources>

@@ -311,4 +311,24 @@
     <string name="apps_recent">Pernah mengirim notifikasi</string>
     <string name="apps_all">Aplikasi lain</string>
     <string name="search">Cari</string>
+    <string name="tab_agenda">Agenda</string>
+    <string name="agenda_empty">Kelas dan tugas tampil di sini setelah Kulia, Todoist, Notion, atau kalender tersambung.</string>
+    <string name="connect_now">Sambungkan</string>
+    <string name="agenda_clear">Tidak ada kelas hari ini dan tidak ada tugas</string>
+    <string name="cancelled">Batal</string>
+    <string name="exam">Ujian</string>
+    <string name="tab_prayer">Ibadah</string>
+    <string name="prayer_off">Waktu sholat masih mati. Pilih kota untuk melihat jadwal hari ini.</string>
+    <string name="see_all">Lihat semua</string>
+    <string name="shelf_tab_empty">Bagikan teks atau file ke Tepi, atau pilih teks lalu Simpan ke Tepi.</string>
+    <string name="shelf_text">Teks · ketuk untuk salin</string>
+    <string name="shelf_file">File · ketuk untuk buka</string>
+    <string name="online">tersambung</string>
+    <string name="agents_idle">Tidak ada sesi agen di laptop</string>
+    <string name="st_working">bekerja</string>
+    <string name="st_waiting">menunggu</string>
+    <string name="st_done">selesai</string>
+    <string name="st_ready">siap</string>
+    <string name="music_idle">Tidak ada yang diputar</string>
+    <string name="open_player">Buka pemutar</string>
 </resources>

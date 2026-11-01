@@ -629,7 +629,7 @@ class Island(
 
     // Next or previous live scene, Home last
     // Home, then features that have something to show
-    private fun pages(): List<Scene> = listOf(home) + scenes.filter { it.tab() }.sortedByDescending { it.priority }
+    private fun pages(): List<Scene> = listOf(home) + scenes.filter { it.tab() }.sortedBy { it.order }
 
     private fun page(dir: Int) {
         val list = pages()

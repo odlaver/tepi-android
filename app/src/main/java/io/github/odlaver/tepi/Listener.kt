@@ -178,15 +178,24 @@ class Listener : NotificationListenerService() {
         isl.home.rows.add(0, TimerRow(isl, timers, ts))
         isl.home.rows.add(1, ClassRow(isl, agenda))
         isl.home.rows.add(2, PrayerRow(isl, reminders))
-        val tasks = TasksScene(isl, agenda)
-        isl.register(tasks)
-        isl.home.rows.add(TaskRow(isl, agenda, tasks))
+        // Fixed tabs for every main feature
+        val agendaTab = io.github.odlaver.tepi.scene.AgendaTab(isl, agenda) { section(Section.CONNECT) }
+        isl.register(agendaTab)
+        isl.register(io.github.odlaver.tepi.scene.PrayerTab(isl, reminders) { section(Section.REMINDERS) })
+        isl.register(io.github.odlaver.tepi.scene.NotesTab(isl, notes, { newNote() }) { open(Items::class.java, Items.NOTES) })
+        isl.register(io.github.odlaver.tepi.scene.ShelfTab(isl, shelf, { picked(it) }) { open(Items::class.java, Items.SHELF) })
+        isl.register(io.github.odlaver.tepi.scene.AgentsTab(isl, pc))
+        isl.home.rows.add(TaskRow(isl, agenda, agendaTab))
         isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
         isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })
         isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true, icon = Icon.Timer) { timers.focus(25) } else null }
         isl.homeExtras.add { Action(getString(R.string.note_new), icon = Icon.Note) { newNote() } }
         isl.menuExtras.add { Action(getString(R.string.t_timer), icon = Icon.Timer) { isl.expand(ts) } }
         isl.menuExtras.add { Action(getString(R.string.note_new), icon = Icon.Note) { newNote() } }
+    }
+
+    private fun section(mode: String) {
+        startActivity(android.content.Intent(this, Section::class.java).putExtra(Section.MODE, mode).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     private fun open(cls: Class<*>, mode: String) {

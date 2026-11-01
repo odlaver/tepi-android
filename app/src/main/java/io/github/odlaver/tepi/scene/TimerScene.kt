@@ -10,6 +10,7 @@ import kotlin.math.min
 class TimerScene(host: Host, private val timers: Timers, private val native: () -> Boolean = { false }) : Scene(host) {
     override val id = "timer"
     override val priority = 50
+    override val order = 2
     private val tmp = RectF()
     private val hits = ArrayList<Pair<RectF, () -> Unit>>()
 

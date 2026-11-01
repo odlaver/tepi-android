@@ -52,7 +52,7 @@ class ClassRow(private val host: Host, private val agenda: Agenda) : HomeRow {
     }
 }
 
-class TaskRow(private val host: Host, private val agenda: Agenda, private val scene: TasksScene) : HomeRow {
+class TaskRow(private val host: Host, private val agenda: Agenda, private val scene: Scene) : HomeRow {
     override fun visible() = agenda.tasks.isNotEmpty()
     override fun height(w: Float) = host.ui.dp(12f) + host.ui.dp(4f) + host.ui.dp(18f) * minOf(3, agenda.tasks.size)
     override fun draw(c: Canvas, r: RectF, a: Float) {
@@ -77,7 +77,7 @@ class TasksScene(host: Host, private val agenda: Agenda) : Scene(host) {
 
     override fun live() = false
     override fun keepOpen() = true
-    override fun tab() = agenda.tasks.isNotEmpty()
+    override fun tab() = false
     override val priority = 20
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}
 
