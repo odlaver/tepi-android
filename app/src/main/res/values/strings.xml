@@ -265,7 +265,17 @@
     </plurals>
     <string name="laptop">Laptop</string>
     <string name="pc_title">Tepi on Windows</string>
-    <string name="pc_how">On the laptop: Tepi › Settings › Agents › Connect phone. Type the address and code shown there. Same Wi-Fi only.</string>
+    <string name="pc_how">On the laptop: Tepi › Settings › Phone › Link a phone, then Make a code. Type the address and code shown there. Same Wi-Fi only.</string>
+    <string name="send_to_laptop">Send to laptop</string>
+    <string name="pc_sending">Sending to the laptop…</string>
+    <string name="pc_sent">Sent to the laptop</string>
+    <string name="pc_send_failed">Couldn\'t send to the laptop</string>
+    <string name="pc_file_in">File from the laptop</string>
+    <string name="pc_file_failed">File from the laptop didn\'t arrive</string>
+    <string name="pc_notifs">Messages to the laptop</string>
+    <string name="pc_notifs_sub">Message notifications also show in Tepi on the laptop</string>
+    <string name="pc_otp">Codes to the laptop</string>
+    <string name="pc_otp_sub">Verification codes from SMS, email, and banking apps, ready to copy on the laptop</string>
     <string name="pc_address">Address, e.g. 192.168.1.5:52341</string>
     <string name="pc_code">Code XXXX-XXXX-XXXX</string>
     <string name="pc_pair">Connect</string>

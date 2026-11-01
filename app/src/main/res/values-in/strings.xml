@@ -262,7 +262,17 @@
     </plurals>
     <string name="laptop">Laptop</string>
     <string name="pc_title">Tepi di Windows</string>
-    <string name="pc_how">Di laptop: Tepi › Pengaturan › Agen › Hubungkan HP. Ketik alamat dan kode yang muncul di sana. Harus satu Wi-Fi.</string>
+    <string name="pc_how">Di laptop: Tepi › Pengaturan › HP › Hubungkan HP, lalu Buat kode. Ketik alamat dan kode yang muncul di sana. Harus satu Wi-Fi.</string>
+    <string name="send_to_laptop">Kirim ke laptop</string>
+    <string name="pc_sending">Mengirim ke laptop…</string>
+    <string name="pc_sent">Terkirim ke laptop</string>
+    <string name="pc_send_failed">Gagal mengirim ke laptop</string>
+    <string name="pc_file_in">Berkas dari laptop</string>
+    <string name="pc_file_failed">Berkas dari laptop gagal diterima</string>
+    <string name="pc_notifs">Pesan ke laptop</string>
+    <string name="pc_notifs_sub">Notifikasi pesan ikut tampil di Tepi laptop</string>
+    <string name="pc_otp">Kode ke laptop</string>
+    <string name="pc_otp_sub">Kode verifikasi dari SMS, email, dan aplikasi bank, siap disalin di laptop</string>
     <string name="pc_address">Alamat, misal 192.168.1.5:52341</string>
     <string name="pc_code">Kode XXXX-XXXX-XXXX</string>
     <string name="pc_pair">Sambungkan</string>

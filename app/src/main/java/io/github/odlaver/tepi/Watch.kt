@@ -16,7 +16,7 @@ import android.os.Looper
 enum class Brief { Charging, Unplugged, Silent, Vibrate, Ring, Audio }
 
 // System broadcasts: power, ring mode, audio devices, camera and mic
-class Watch(private val context: Context, private val prefs: Prefs, private val brief: (Brief, String) -> Unit, private val lowBattery: (Int) -> Unit, private val privacy: (Boolean, Boolean) -> Unit) {
+class Watch(private val context: Context, private val prefs: Prefs, private val brief: (Brief, String) -> Unit, private val lowBattery: (Int) -> Unit, private val battery: (Int, Boolean) -> Unit, private val privacy: (Boolean, Boolean) -> Unit) {
     private val main = Handler(Looper.getMainLooper())
     private val audio = context.getSystemService(AudioManager::class.java)
     private val camera = context.getSystemService(CameraManager::class.java)
@@ -41,6 +41,7 @@ class Watch(private val context: Context, private val prefs: Prefs, private val 
                     if (lv >= 0 && scale > 0) level = lv * 100 / scale
                     val st = i.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
                     charging = st == BatteryManager.BATTERY_STATUS_CHARGING || st == BatteryManager.BATTERY_STATUS_FULL
+                    battery(level, charging)
                     if (charging) lowShown = 100
                     else if (prefs.bool("act.charge", true) && (level == 20 || level == 10) && level < lowShown) {
                         lowShown = level

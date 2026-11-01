@@ -47,6 +47,9 @@ class Listener : NotificationListenerService() {
     private lateinit var prefs: Prefs
     private lateinit var lyrics: Lyrics
     private val recent = HashMap<String, Long>()
+    private val sentPc = HashMap<String, Long>()
+    private val codes = HashMap<String, Long>()
+    private val forwarded = HashSet<String>()
     lateinit var timers: Timers
     lateinit var reminders: Reminders
     lateinit var notes: Notes
@@ -72,9 +75,10 @@ class Listener : NotificationListenerService() {
         timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
         agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
-        pc = Pc(agenda.vault, prefs) { island?.refresh() }
+        pc = Pc(this, agenda.vault, prefs) { island?.refresh() }
+        pc.onFile = { name, uri -> fromLaptop(name, uri) }
         live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh() }
-        watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, privacy = { cam, mic ->
+        watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, battery = { l, c -> pc.battery(l, c) }, privacy = { cam, mic ->
             privacyScene?.let { it.cam = cam; it.mic = mic }
             island?.refresh()
         })
@@ -237,6 +241,60 @@ class Listener : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         live.removed(sbn.key)
+        if (forwarded.remove(sbn.key)) pc.removed(sbn.key)
+    }
+
+    // Laptop sent a file; it sits in Download/Tepi
+    private fun fromLaptop(name: String, uri: android.net.Uri?) {
+        if (uri == null) { alert(Alert("pc", getString(R.string.pc_file_failed), name, Glyph.Bell, ms = 4000)); return }
+        val open = Action(getString(R.string.open), primary = true, icon = Icon.Open) {
+            val type = contentResolver.getType(uri) ?: "*/*"
+            island?.open(android.content.Intent(android.content.Intent.ACTION_VIEW).setDataAndType(uri, type).addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION))
+        }
+        alert(Alert("pc", getString(R.string.pc_file_in), name, Glyph.Check, listOf(open), 8000))
+    }
+
+    // Send to laptop finished
+    fun sentToLaptop(ok: Boolean, name: String) {
+        alert(Alert("pc", getString(if (ok) R.string.pc_sent else R.string.pc_send_failed), name, if (ok) Glyph.Check else Glyph.Bell, ms = 4000))
+    }
+
+    // Codes from any app; never the notification itself
+    private fun otpFrom(sbn: StatusBarNotification): String? {
+        val x = sbn.notification.extras
+        val parts = listOf(x.getCharSequence(Notification.EXTRA_TITLE), x.getCharSequence(Notification.EXTRA_TEXT), x.getCharSequence(Notification.EXTRA_BIG_TEXT),
+            lastMessage(sbn.notification), sbn.notification.tickerText).mapNotNull { it?.toString() }.distinct()
+        val code = Otp.find(parts.joinToString("\n")) ?: return null
+        val now = SystemClock.uptimeMillis()
+        codes.entries.removeAll { now - it.value > 120_000 }
+        if (codes.containsKey(code)) return code
+        codes[code] = now
+        pc.otp(appLabel(sbn.packageName), code)
+        return code
+    }
+
+    // Messages to the laptop's Pesan
+    private fun forward(sbn: StatusBarNotification, rankingMap: RankingMap?) {
+        val n = sbn.notification
+        if (sbn.isOngoing || !isMessage(n) || n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
+        if (rankingMap != null) {
+            val rank = Ranking()
+            if (rankingMap.getRanking(sbn.key, rank) && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
+        }
+        val x = n.extras
+        val title = (x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim().orEmpty()
+        val text = lastMessage(n) ?: x.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        if (title.isEmpty() && text.isEmpty()) return
+        val sig = sbn.key + "|" + title + "|" + text
+        val now = SystemClock.uptimeMillis()
+        sentPc.entries.removeAll { now - it.value > 60_000 }
+        if (sentPc.containsKey(sig)) return
+        sentPc[sig] = now
+        val app = appLabel(sbn.packageName)
+        if (forwarded.size > 500) forwarded.clear()
+        forwarded.add(sbn.key)
+        if (prefs.notifContent) pc.notif(sbn.key, sbn.packageName, app, title.ifEmpty { app }, text, appIcon(sbn.packageName))
+        else pc.notif(sbn.key, sbn.packageName, app, app, getString(R.string.new_message), appIcon(sbn.packageName))
     }
 
     private fun timerEnded(k: Timers.Kind) {
@@ -300,9 +358,12 @@ class Listener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         if (sbn.packageName != packageName) AppFilter.saw(prefs, sbn.packageName)
+        val own = sbn.packageName == packageName
+        val code = if (!own && pc.paired && pc.sendOtp) otpFrom(sbn) else null
         // User turned this app off
         if (!AppFilter.allowed(prefs, sbn.packageName)) return
         live.posted(sbn)
+        if (!own && code == null && pc.paired && pc.online) forward(sbn, rankingMap)
         val isl = island ?: return
         if (!prefs.notifs) return
         val n = sbn.notification
