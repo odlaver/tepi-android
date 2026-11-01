@@ -263,7 +263,7 @@ class Listener : NotificationListenerService() {
     private fun otpFrom(sbn: StatusBarNotification): String? {
         val x = sbn.notification.extras
         val parts = listOf(x.getCharSequence(Notification.EXTRA_TITLE), x.getCharSequence(Notification.EXTRA_TEXT), x.getCharSequence(Notification.EXTRA_BIG_TEXT),
-            lastMessage(sbn.notification), sbn.notification.tickerText).mapNotNull { it?.toString() }.distinct()
+            lastBundle(sbn.notification)?.getCharSequence("text"), sbn.notification.tickerText).mapNotNull { it?.toString() }.distinct()
         val code = Otp.find(parts.joinToString("\n")) ?: return null
         val now = SystemClock.uptimeMillis()
         codes.entries.removeAll { now - it.value > 120_000 }
@@ -281,9 +281,7 @@ class Listener : NotificationListenerService() {
             val rank = Ranking()
             if (rankingMap.getRanking(sbn.key, rank) && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
         }
-        val x = n.extras
-        val title = (x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim().orEmpty()
-        val text = lastMessage(n) ?: x.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        val (title, text) = chat(n)
         if (title.isEmpty() && text.isEmpty()) return
         val sig = sbn.key + "|" + title + "|" + text
         val now = SystemClock.uptimeMillis()
@@ -373,9 +371,7 @@ class Listener : NotificationListenerService() {
             val rank = Ranking()
             if (rankingMap.getRanking(sbn.key, rank) && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
         }
-        val x = n.extras
-        val title = (x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x.getCharSequence(Notification.EXTRA_TITLE))?.toString()?.trim().orEmpty()
-        val text = lastMessage(n) ?: x.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        val (title, text) = chat(n)
         if (title.isEmpty() && text.isEmpty()) return
 
         // Same text again: an update, not news
@@ -406,10 +402,28 @@ class Listener : NotificationListenerService() {
     }
 
     // MessagingStyle: newest message wins
-    private fun lastMessage(n: Notification): String? {
-        val arr = n.extras.getParcelableArray(Notification.EXTRA_MESSAGES) ?: return null
-        val last = arr.lastOrNull() as? android.os.Bundle ?: return null
-        return last.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+    // Chat apps put the account in EXTRA_TITLE; the sender is in the message
+    private fun chat(n: Notification): Pair<String, String> {
+        val x = n.extras
+        val conv = x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        val last = lastBundle(n)
+        val sender = last?.let { senderOf(it) }
+        val group = x.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION) && conv != null
+        val body = last?.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+            ?: x.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
+        val title = (if (group) conv else sender ?: conv ?: x.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()).orEmpty()
+        return title to (if (group && sender != null) "$sender: $body" else body)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun lastBundle(n: Notification): android.os.Bundle? =
+        n.extras.getParcelableArray(Notification.EXTRA_MESSAGES)?.lastOrNull() as? android.os.Bundle
+
+    // Person name first, legacy sender string second
+    @Suppress("DEPRECATION")
+    private fun senderOf(b: android.os.Bundle): String? {
+        val person = b.getParcelable<android.app.Person>("sender_person")
+        return (person?.name ?: b.getCharSequence("sender"))?.toString()?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun appLabel(pkg: String): String = try {
