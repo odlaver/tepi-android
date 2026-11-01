@@ -42,9 +42,6 @@ abstract class Scene(protected val host: Host) {
     // Shown as a swipe page when the island is open
     open fun tab() = live() && !card()
 
-    // Only the row, hanging under the system island
-    open fun dropOnly() = false
-
     // Compact: zones beside the camera
     open fun wing() = 0f
     abstract fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float)

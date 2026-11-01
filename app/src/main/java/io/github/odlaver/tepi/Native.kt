@@ -29,24 +29,8 @@ object Native {
     const val ALERT_ID = 7002
     const val MESSAGE_ID = 7003
     const val ASK_ID = 7004
-    const val LYRIC_ID = 7005
 
-    // Experiment: current lyric line as its own island
-    fun lyric(c: Context, track: Track, line: String) {
-        val b = HyperIslandNotification.Builder(c, "tepi_lyric", line)
-            .addPicture(HyperPicture("art", track.art ?: glyph(Icon.Music)))
-            .addPicture(HyperPicture("blank", clear()))
-            .setShowNotification(false)
-            .setEnableFloat(false)
-            .setIslandConfig(priority = 3, dismissible = false)
-            .setBaseInfo(title = line, content = listOf(track.title, track.artist).filter { it.isNotEmpty() }.joinToString(" · "), pictureKey = "art")
-            .setBigIslandInfo(
-                left = ImageTextInfoLeft(1, PicInfo(1, "art"), TextInfo("", "")),
-                right = ImageTextInfoRight(1, PicInfo(1, "blank"), TextInfo(line, track.artist.ifEmpty { track.title })),
-            )
-            .setSmallIsland("art")
-        post(c, LYRIC_ID, b, line, track.title, true, null)
-    }
+
     private const val PROGRESS_BASE = 7100
 
     fun progressId(key: String) = PROGRESS_BASE + (key.hashCode() and 0x3f)

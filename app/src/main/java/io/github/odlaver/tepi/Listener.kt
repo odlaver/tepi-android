@@ -81,7 +81,7 @@ class Listener : NotificationListenerService() {
     override fun onListenerConnected() {
         instance = this
         connected = true
-        media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged(); lyricTick.run() }.also { it.start() }
+        media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
         applyEnabled()
     }
 
@@ -161,7 +161,6 @@ class Listener : NotificationListenerService() {
         timerScene = ts
         isl.register(al)
         isl.register(ts)
-        isl.register(isl.music.Drop { prefs.bool("native.lyrics", false) && Native.on(this, prefs) })
         val br = BriefScene(isl)
         val pv = PrivacyScene(isl)
         briefs = br
@@ -255,26 +254,8 @@ class Listener : NotificationListenerService() {
         if (first != null && prefs.enabled && Native.on(this, prefs)) Native.ask(this, first) else Native.cancel(this, Native.ASK_ID)
     }
 
-    private val ticker = android.os.Handler(android.os.Looper.getMainLooper())
-    private var lyricShown: String? = null
-
-    // Experiment: lyric line into the system island while playing
-    private val lyricTick = object : Runnable {
-        override fun run() {
-            ticker.removeCallbacks(this)
-            val m = media
-            val on = prefs.enabled && prefs.bool("native.lyrics", false) && Native.on(this@Listener, prefs)
-            // Drawn by Tepi under the system island; wake it on each new line
-            val line = if (on) island?.music?.lineNow() else null
-            if (line != lyricShown) { lyricShown = line; island?.refresh() }
-            Native.cancel(this@Listener, Native.LYRIC_ID)
-            if (on && m?.playing == true) ticker.postDelayed(this, 300)
-        }
-    }
-
     // Timer in the system island, or nowhere
     fun syncNative() {
-        lyricTick.run()
         if (prefs.enabled && Native.on(this, prefs) && timers.active) Native.timer(this, timers)
         else Native.cancel(this, Native.TIMER_ID)
     }
