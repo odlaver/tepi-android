@@ -296,4 +296,7 @@
     <string name="download">Download</string>
     <string name="enable_tepi">Turn Tepi on or off</string>
     <string name="status_off">Tepi is off</string>
+    <string name="just_now">now</string>
+    <string name="mins_ago">%1$d min</string>
+    <string name="n_more">%1$d more</string>
 </resources>

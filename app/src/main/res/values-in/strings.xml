@@ -293,4 +293,7 @@
     <string name="download">Unduh</string>
     <string name="enable_tepi">Nyalakan atau matikan Tepi</string>
     <string name="status_off">Tepi nonaktif</string>
+    <string name="just_now">baru</string>
+    <string name="mins_ago">%1$d mnt</string>
+    <string name="n_more">%1$d lainnya</string>
 </resources>

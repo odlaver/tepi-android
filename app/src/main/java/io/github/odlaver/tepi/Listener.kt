@@ -312,11 +312,12 @@ class Listener : NotificationListenerService() {
         val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
         val reveal = prefs.notifContent && !locked
         val app = appLabel(sbn.packageName)
-        val icon = n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(sbn.packageName)
+        val badge = appIcon(sbn.packageName)
+        val icon = n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: badge
         val reply = if (reveal) n.actions?.firstOrNull { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true } else null
         val others = if (reveal) n.actions?.filter { it !== reply && it.remoteInputs.isNullOrEmpty() && it.actionIntent != null }?.take(2).orEmpty() else emptyList()
-        val m = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others)
-        else Message(sbn.key, app, getString(R.string.new_message), appIcon(sbn.packageName), n.contentIntent)
+        val m = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others, app, badge, sbn.postTime)
+        else Message(sbn.key, app, getString(R.string.new_message), badge, n.contentIntent, app = app, appIcon = badge, at = sbn.postTime)
         isl.show(m)
     }
 

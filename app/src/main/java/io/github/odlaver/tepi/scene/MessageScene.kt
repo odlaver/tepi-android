@@ -26,6 +26,9 @@ class Message(
     val intent: PendingIntent?,
     val reply: Notification.Action? = null,
     val actions: List<Notification.Action> = emptyList(),
+    val app: String = "",
+    val appIcon: Bitmap? = null,
+    val at: Long = System.currentTimeMillis(),
 )
 
 // Incoming messages as a card, stacked
@@ -76,10 +79,10 @@ class MessageScene(host: Host) : Scene(host) {
 
     override fun panelHeight(w: Float): Float {
         val m = queue.firstOrNull() ?: return 0f
-        val textW = w - ui.dp(36f) - ui.s12
-        val textH = ui.title.fontSpacing + (if (m.text.isEmpty()) 0f else body(m, textW).height.toFloat())
-        var h = max(ui.dp(36f), textH)
-        if (buttons(m).isNotEmpty()) h += ui.s12 + ui.btnH
+        val textW = w - ui.dp(40f) - ui.s12
+        val textH = ui.dp(14f) + ui.title.fontSpacing + (if (m.text.isEmpty()) 0f else body(m, textW).height.toFloat())
+        var h = max(ui.dp(40f), textH)
+        if (buttons(m).isNotEmpty()) h += ui.s12 + ui.dp(32f)
         return h
     }
 
@@ -90,12 +93,22 @@ class MessageScene(host: Host) : Scene(host) {
         return out
     }
 
+    // "now", "3 min", "09:41"
+    private fun ago(at: Long): String {
+        val mins = (System.currentTimeMillis() - at) / 60_000L
+        return when {
+            mins < 1 -> host.ctx.getString(R.string.just_now)
+            mins < 60 -> host.ctx.getString(R.string.mins_ago, mins)
+            else -> java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(at))
+        }
+    }
+
     private fun body(m: Message, width: Float): StaticLayout {
         val w = max(1, width.toInt())
         layout?.let { if (layoutFor === m && it.width == w) return it }
         val p = TextPaint(ui.body)
         return StaticLayout.Builder.obtain(m.text, 0, m.text.length, p, w)
-            .setMaxLines(3)
+            .setMaxLines(2)
             .setEllipsize(TextUtils.TruncateAt.END)
             .setAlignment(Layout.Alignment.ALIGN_NORMAL)
             .build().also { layout = it; layoutFor = m }
@@ -103,22 +116,36 @@ class MessageScene(host: Host) : Scene(host) {
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
         val m = queue.firstOrNull() ?: return
-        val icon = ui.dp(36f)
+        val icon = ui.dp(40f)
         tmp.set(r.left, r.top, r.left + icon, r.top + icon)
         ui.art(c, m.icon, tmp, a, 0.5f)
+        // App badge on the avatar, only when it is a person
+        if (m.appIcon != null && m.appIcon !== m.icon) {
+            val bs = ui.dp(16f)
+            val bx = tmp.right - bs + ui.dp(3f)
+            val by = tmp.bottom - bs + ui.dp(3f)
+            ui.dot(c, bx + bs / 2, by + bs / 2, bs / 2 + ui.dp(2f), android.graphics.Color.BLACK, a)
+            tmp.set(bx, by, bx + bs, by + bs)
+            ui.art(c, m.appIcon, tmp, a, 0.5f)
+        }
         val tx = r.left + icon + ui.s12
         val tw = r.right - tx
+        // App and time above, count of others on the right
         val more = queue.size - 1
-        val moreText = if (more > 0) "+$more" else ""
+        val meta = listOf(m.app, ago(m.at)).filter { it.isNotEmpty() }.joinToString(" · ")
+        val moreText = if (more > 0) host.ctx.getString(R.string.n_more, more) else ""
         val moreW = if (more > 0) ui.small.measureText(moreText) + ui.s8 else 0f
-        ui.text(c, m.title, ui.title, tx, r.top - ui.title.ascent(), tw - moreW, a)
-        if (more > 0) ui.textEnd(c, moreText, ui.small, r.right, r.top - ui.title.ascent(), a)
-        var bottom = r.top + ui.title.fontSpacing
+        ui.text(c, meta, ui.small, tx, r.top + ui.dp(10f), tw - moreW, a)
+        if (more > 0) ui.textEnd(c, moreText, ui.small, r.right, r.top + ui.dp(10f), a)
+        val top = r.top + ui.dp(14f)
+        ui.text(c, m.title, ui.title, tx, top - ui.title.ascent(), tw, a)
+        var bottom = top + ui.title.fontSpacing
         if (m.text.isNotEmpty()) {
             val l = body(m, tw)
             c.save()
             c.translate(tx, bottom)
-            l.paint.alpha = (ui.body.alpha * a).toInt()
+            l.paint.alpha = (255 * a).toInt()
+            l.paint.color = ui.ink
             l.draw(c)
             c.restore()
             bottom += l.height
@@ -127,14 +154,19 @@ class MessageScene(host: Host) : Scene(host) {
         hits.clear()
         val bs = buttons(m)
         if (bs.isEmpty()) return
+        // Compact chips under the text, sized to their labels
         val y = max(r.top + icon, bottom) + ui.s12
-        val gap = ui.s8
-        val bw = (r.width() - gap * (bs.size - 1)) / bs.size
+        val h = ui.dp(32f)
+        var x = tx
         bs.forEachIndexed { i, (label, act) ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
             val isReply = i == 0 && m.reply != null
+            val p = if (isReply) ui.labelDark else ui.label
+            val w = p.measureText(label) + ui.s24 + if (isReply) ui.iconS + ui.dp(6f) else 0f
+            if (x + w > r.right) return@forEachIndexed
+            val br = RectF(x, y, x + w, y + h)
             ui.button(c, br, label, a, primary = isReply, icon = if (isReply) io.github.odlaver.tepi.Icon.Reply else null)
             hits.add(br to act)
+            x += w + ui.s8
         }
     }
 
