@@ -19,21 +19,36 @@ import android.view.Gravity
 import android.view.View
 import android.widget.LinearLayout
 
-// The island's own pill, as on the Windows tray icon
+// Tepi's eyes, blinking now and then
 class Mark(context: Context) : View(context) {
-    private val p = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
     private val r = RectF()
+    private var lid = 1f
+    private val blink = object : Runnable {
+        override fun run() {
+            val a = android.animation.ValueAnimator.ofFloat(1f, 0.1f, 1f).setDuration(220)
+            a.addUpdateListener { lid = it.animatedValue as Float; invalidate() }
+            a.start()
+            postDelayed(this, 3500L + (Math.random() * 2500).toLong())
+        }
+    }
+
+    override fun onAttachedToWindow() { super.onAttachedToWindow(); postDelayed(blink, 1800) }
+    override fun onDetachedFromWindow() { removeCallbacks(blink); super.onDetachedFromWindow() }
+
     override fun onDraw(c: Canvas) {
+        // Same 6:9 eye as Tepi on Windows
         val h = height.toFloat()
-        val w = width.toFloat()
-        p.color = Color.argb(60, 255, 255, 255)
-        r.set(0f, 0f, w, h)
-        c.drawRoundRect(r, h / 2, h / 2, p)
-        p.color = Color.BLACK
-        r.inset(h * 0.08f, h * 0.08f)
-        c.drawRoundRect(r, r.height() / 2, r.height() / 2, p)
-        p.color = Color.WHITE
-        c.drawCircle(w - h / 2, h / 2, h * 0.22f, p)
+        val full = h * 0.78f
+        val ew = full * 0.667f
+        val eh = full * lid
+        val gap = ew * 0.85f
+        val x = (width - ew * 2 - gap) / 2
+        val y = (h - eh) / 2
+        for (i in 0..1) {
+            r.set(x + i * (ew + gap), y, x + i * (ew + gap) + ew, y + eh)
+            c.drawRoundRect(r, ew / 2, ew / 2, p)
+        }
     }
 }
 
@@ -103,7 +118,7 @@ class MainActivity : Page() {
             background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = dp(22f); setStroke(dpi(1f), Color.argb(40, 255, 255, 255)) }
         }
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        top.addView(Mark(this), LinearLayout.LayoutParams(dpi(44f), dpi(22f)).apply { marginEnd = dpi(12f) })
+        top.addView(Mark(this).apply { contentDescription = null; importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO }, LinearLayout.LayoutParams(dpi(28f), dpi(22f)).apply { marginEnd = dpi(12f) })
         top.addView(text(getString(R.string.app_name), 22f, Color.WHITE, bold = true))
         top.addView(text(BuildConfig.VERSION_NAME, 12f, Color.argb(150, 255, 255, 255)).apply { setPadding(dpi(6f), dpi(6f), 0, 0) },
             LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
