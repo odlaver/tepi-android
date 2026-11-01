@@ -48,7 +48,8 @@ class MessageScene(host: Host) : Scene(host) {
     private val drop = Runnable { next() }
 
     fun show(m: Message) {
-        queue.removeAll { it.key == m.key }
+        // Newer message from the same chat replaces the card
+        queue.removeAll { it.key == m.key || (it.app == m.app && it.title == m.title) }
         queue.add(0, m)
         while (queue.size > 5) queue.removeAt(queue.size - 1)
         arm()

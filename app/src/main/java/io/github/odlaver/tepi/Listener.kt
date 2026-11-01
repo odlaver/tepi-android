@@ -318,7 +318,8 @@ class Listener : NotificationListenerService() {
         if (title.isEmpty() && text.isEmpty()) return
 
         // Same text again: an update, not news
-        val sig = sbn.key + "|" + title + "|" + text
+        // Same app, chat, and text: one card, whatever the key
+        val sig = sbn.packageName + "|" + title + "|" + text
         val nowMs = SystemClock.uptimeMillis()
         recent.entries.removeAll { nowMs - it.value > 60_000 }
         if (recent.containsKey(sig)) return
