@@ -77,6 +77,8 @@ class TasksScene(host: Host, private val agenda: Agenda) : Scene(host) {
 
     override fun live() = false
     override fun keepOpen() = true
+    override fun tab() = agenda.tasks.isNotEmpty()
+    override val priority = 20
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}
 
     override fun panelHeight(w: Float) = ui.dp(18f) + ui.s8 + maxOf(1, minOf(6, agenda.tasks.size)) * row

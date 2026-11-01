@@ -36,6 +36,9 @@ abstract class Scene(protected val host: Host) {
     // Panel stays open while not live
     open fun keepOpen() = false
 
+    // Shown as a swipe page when the island is open
+    open fun tab() = live() && !card()
+
     // Compact: zones beside the camera
     open fun wing() = 0f
     abstract fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float)

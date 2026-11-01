@@ -179,6 +179,7 @@ class Listener : NotificationListenerService() {
         isl.home.rows.add(1, ClassRow(isl, agenda))
         isl.home.rows.add(2, PrayerRow(isl, reminders))
         val tasks = TasksScene(isl, agenda)
+        isl.register(tasks)
         isl.home.rows.add(TaskRow(isl, agenda, tasks))
         isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
         isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })

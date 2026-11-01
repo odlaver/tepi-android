@@ -305,7 +305,7 @@ class Island(
         if (pill.height() < ui.dp(30f)) pill.bottom = pill.top + ui.dp(30f)
         val bar = resources.getIdentifier("status_bar_height", "dimen", "android").let { if (it != 0) resources.getDimensionPixelSize(it) else 0 }
         statusBottom = max(pill.bottom, (cut?.safeInsetTop?.takeIf { it > 0 } ?: bar).toFloat())
-        wingBase = max(pill.height() * 1.1f, ui.dp(30f))
+        wingBase = max(pill.height() * 1.3f, ui.dp(36f))
     }
 
     private val landscape get() = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -360,7 +360,8 @@ class Island(
             Kind.Panel -> {
                 val w = wide
                 val h = primary?.panelHeight(w - ui.pad * 2) ?: 0f
-                target.set(cx - w / 2, pill.top, cx + w / 2, statusBottom + ui.s16 + h + ui.pad)
+                val dots = if (opened != null && pages().size > 1) ui.dp(18f) else 0f
+                target.set(cx - w / 2, pill.top, cx + w / 2, statusBottom + ui.s16 + h + ui.pad + dots)
                 nk = min(compactWidth(if (primary?.card() == true) null else primary), w)
                 sy = statusBottom; rb = ui.radiusPanel
             }
@@ -476,8 +477,21 @@ class Island(
                 }
             }
             Kind.Panel -> {
-                content.set(target.left + ui.pad, statusBottom + ui.s16, target.right - ui.pad, target.bottom - ui.pad)
+                val list = if (opened != null) pages() else emptyList()
+                val dots = if (list.size > 1) ui.dp(18f) else 0f
+                content.set(target.left + ui.pad, statusBottom + ui.s16, target.right - ui.pad, target.bottom - ui.pad - dots)
                 s.drawPanel(canvas, content, a)
+                // Page dots: which tab, and that there are more
+                if (list.size > 1) {
+                    val r = ui.dp(3f)
+                    val gap = ui.dp(10f)
+                    val y = target.bottom - ui.pad / 2 - dots / 2
+                    var x = target.centerX() - (list.size - 1) * gap / 2
+                    for (p in list) {
+                        ui.dot(canvas, x, y, r, if (p === s) ui.ink else ui.faint, a)
+                        x += gap
+                    }
+                }
             }
             Kind.Hidden -> Unit
         }
@@ -493,9 +507,11 @@ class Island(
     private fun zones(at: RectF) {
         val nk = min(neck.value, at.width())
         val left = at.centerX() - nk / 2
-        val inset = max(ui.dp(7f), (pill.height() - ui.dp(26f)) / 2)
-        zoneL.set(left + inset, pill.top + inset, hole.left - ui.s8, pill.bottom - inset)
-        zoneR.set(hole.right + ui.s8, pill.top + inset, left + nk - inset, pill.bottom - inset)
+        // Keep content off the rounded ends
+        val inset = max(ui.dp(7f), (pill.height() - ui.dp(22f)) / 2)
+        val side = max(inset, pill.height() * 0.42f)
+        zoneL.set(left + side, pill.top + inset, hole.left - ui.s12, pill.bottom - inset)
+        zoneR.set(hole.right + ui.s12, pill.top + inset, left + nk - side, pill.bottom - inset)
     }
 
     // Neck and body joined by concave fillets
@@ -612,12 +628,17 @@ class Island(
     }
 
     // Next or previous live scene, Home last
+    // Home, then features that have something to show
+    private fun pages(): List<Scene> = listOf(home) + scenes.filter { it.tab() }.sortedByDescending { it.priority }
+
     private fun page(dir: Int) {
-        val pages = scenes.filter { it.live() && !it.card() }.sortedByDescending { it.priority } + home
-        val cur = pages.indexOf(primary)
-        val next = pages[((if (cur < 0) 0 else cur) + dir + pages.size) % pages.size]
+        val list = pages()
+        if (list.size < 2) return
+        val cur = list.indexOf(primary).coerceAtLeast(0)
+        val next = cur + dir
+        if (next < 0 || next >= list.size) return
         haptic()
-        expand(next)
+        expand(list[next])
     }
 
     private fun tap(x: Float, y: Float) {

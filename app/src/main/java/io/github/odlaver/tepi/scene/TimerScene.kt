@@ -15,6 +15,7 @@ class TimerScene(host: Host, private val timers: Timers) : Scene(host) {
 
     override fun live() = timers.active
     override fun keepOpen() = true
+    override fun tab() = true
     override fun ticking() = timers.active && !timers.paused
 
     private fun label(): String = host.ctx.getString(when (timers.kind) {

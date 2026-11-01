@@ -77,6 +77,9 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
     // Has a track at all, for Home
     fun present() = media.track != null
 
+    override fun tab() = present() && prefs.music
+    override fun keepOpen() = present()
+
     override fun dismiss() { dismissedKey = media.track?.key }
 
     override fun ticking() = media.playing
