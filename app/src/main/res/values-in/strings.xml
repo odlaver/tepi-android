@@ -291,4 +291,6 @@
     <string name="update_found">Tepi %1$s tersedia</string>
     <string name="update_sub">APK dibuka di browser. Pasang di atas versi ini; pengaturan tetap.</string>
     <string name="download">Unduh</string>
+    <string name="enable_tepi">Nyalakan atau matikan Tepi</string>
+    <string name="status_off">Tepi nonaktif</string>
 </resources>

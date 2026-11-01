@@ -13,6 +13,11 @@ class Prefs(context: Context) {
     fun str(key: String, def: String) = sp.getString(key, def) ?: def
     fun set(key: String, v: String) = sp.edit().putString(key, v).apply()
 
+    // Master switch: island and every feature
+    var enabled: Boolean
+        get() = bool("enabled", true)
+        set(v) = set("enabled", v)
+
     var music: Boolean
         get() = bool("music", true)
         set(v) = set("music", v)

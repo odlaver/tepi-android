@@ -82,12 +82,28 @@ class Listener : NotificationListenerService() {
         instance = this
         connected = true
         media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
-        reminders.start()
-        watch.start()
-        agenda.start()
-        pc.start()
-        try { activeNotifications?.forEach { live.posted(it) } } catch (_: Exception) { }
-        ensureIsland()
+        applyEnabled()
+    }
+
+    // Start or pause everything after the master switch
+    fun applyEnabled() {
+        if (prefs.enabled) {
+            reminders.start()
+            watch.start()
+            agenda.start()
+            pc.start()
+            try { activeNotifications?.forEach { live.posted(it) } } catch (_: Exception) { }
+            ensureIsland()
+        } else {
+            island?.detach()
+            island = null
+            reminders.stop()
+            watch.stop()
+            agenda.stop()
+            pc.stop()
+            live.clear()
+        }
+        Tile.refresh(this)
     }
 
     override fun onListenerDisconnected() {
@@ -115,6 +131,7 @@ class Listener : NotificationListenerService() {
 
     // Overlay access may arrive later
     fun ensureIsland() {
+        if (!prefs.enabled) return
         val m = media ?: return
         val access = Access.instance
         if (island != null || (access == null && !Settings.canDrawOverlays(this))) return

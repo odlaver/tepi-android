@@ -75,8 +75,8 @@ class MainActivity : Page() {
     private fun a11y() = Access.instance != null
     private fun canDraw() = overlay() || a11y()
     private fun blocked() = canDraw() && access() && !Listener.connected && SystemClock.uptimeMillis() - resumedAt > 5000
-    private fun running() = canDraw() && access() && Listener.connected
-    private fun state() = "${overlay()}${access()}${a11y()}${Listener.connected}${blocked()}${Oem.batteryFree(this)}"
+    private fun running() = prefs.enabled && canDraw() && access() && Listener.connected
+    private fun state() = "${prefs.enabled}${overlay()}${access()}${a11y()}${Listener.connected}${blocked()}${Oem.batteryFree(this)}"
 
     override fun build() {
         hero()
@@ -105,7 +105,21 @@ class MainActivity : Page() {
         val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         top.addView(Mark(this), LinearLayout.LayoutParams(dpi(44f), dpi(22f)).apply { marginEnd = dpi(12f) })
         top.addView(text(getString(R.string.app_name), 22f, Color.WHITE, bold = true))
-        top.addView(text(BuildConfig.VERSION_NAME, 12f, Color.argb(150, 255, 255, 255)).apply { setPadding(dpi(6f), dpi(6f), 0, 0) })
+        top.addView(text(BuildConfig.VERSION_NAME, 12f, Color.argb(150, 255, 255, 255)).apply { setPadding(dpi(6f), dpi(6f), 0, 0) },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+        // Master switch, white on the black card
+        top.addView(android.widget.Switch(this).apply {
+            isChecked = prefs.enabled
+            contentDescription = getString(R.string.enable_tepi)
+            val states = arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf())
+            thumbTintList = android.content.res.ColorStateList(states, intArrayOf(Color.WHITE, Color.rgb(150, 150, 152)))
+            trackTintList = android.content.res.ColorStateList(states, intArrayOf(Color.rgb(52, 199, 89), Color.argb(90, 255, 255, 255)))
+            setOnCheckedChangeListener { _, on ->
+                prefs.enabled = on
+                Listener.instance?.applyEnabled()
+                rebuild()
+            }
+        })
         card.addView(top)
         val run = running()
         val statusRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, dpi(12f), 0, 0) }
@@ -116,6 +130,7 @@ class MainActivity : Page() {
             }
         }, LinearLayout.LayoutParams(dpi(8f), dpi(8f)).apply { marginEnd = dpi(8f) })
         statusRow.addView(text(getString(when {
+            !prefs.enabled -> R.string.status_off
             run -> R.string.status_running
             blocked() -> R.string.status_blocked
             canDraw() && access() -> R.string.status_waiting

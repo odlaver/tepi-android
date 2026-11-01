@@ -294,4 +294,6 @@
     <string name="update_found">Tepi %1$s is available</string>
     <string name="update_sub">The APK opens in the browser. Install it over this version; settings stay.</string>
     <string name="download">Download</string>
+    <string name="enable_tepi">Turn Tepi on or off</string>
+    <string name="status_off">Tepi is off</string>
 </resources>
