@@ -4,8 +4,17 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- App list for the notification filter -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="false"
@@ -54,6 +63,10 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@style/Tepi.Hop" />
+
+        <activity
+            android:name=".Apps"
+            android:exported="false" />
 
         <activity
             android:name=".Section"

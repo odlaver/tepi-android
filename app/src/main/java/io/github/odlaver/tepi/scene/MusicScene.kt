@@ -70,7 +70,7 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
 
     override fun live(): Boolean {
         val tr = media.track ?: return false
-        if (tr.key == dismissedKey || !prefs.music) return false
+        if (tr.key == dismissedKey || !prefs.music || !io.github.odlaver.tepi.AppFilter.allowed(prefs, tr.pkg)) return false
         return media.playing || (pausedAt > 0 && SystemClock.uptimeMillis() - pausedAt < PAUSED_MS)
     }
 

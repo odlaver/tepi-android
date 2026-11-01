@@ -67,7 +67,7 @@ class Listener : NotificationListenerService() {
         lyrics = Lyrics(java.io.File(cacheDir, "lyrics"))
         notes = Notes(this)
         shelf = Shelf(this)
-        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
+        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh(); syncNative() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
         agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
         pc = Pc(agenda.vault, prefs) { island?.refresh() }
@@ -156,7 +156,7 @@ class Listener : NotificationListenerService() {
     // Features into a fresh island
     private fun wire(isl: Island) {
         val al = AlertScene(isl)
-        val ts = TimerScene(isl, timers)
+        val ts = TimerScene(isl, timers) { Native.on(this, prefs) }
         alerts = al
         timerScene = ts
         isl.register(al)
@@ -207,8 +207,30 @@ class Listener : NotificationListenerService() {
     }
 
     private fun alert(a: Alert) {
+        // Plain cards go to the system island when it is on
+        if (a.actions.isEmpty() && Native.on(this, prefs)) {
+            Native.alert(this, a.title, a.body, glyphIcon(a.glyph), a.ms)
+            return
+        }
         ensureIsland()
         alerts?.show(a)
+    }
+
+    private fun glyphIcon(g: Glyph) = when (g) {
+        Glyph.Bell -> Icon.Bell
+        Glyph.Moon -> Icon.Moon
+        Glyph.Drop -> Icon.Drop
+        Glyph.Eye -> Icon.Eye
+        Glyph.Stretch -> Icon.Stretch
+        Glyph.Bolt -> Icon.Bolt
+        Glyph.Book -> Icon.Book
+        Glyph.Check -> Icon.Check
+    }
+
+    // Timer in the system island, or nowhere
+    fun syncNative() {
+        if (prefs.enabled && Native.on(this, prefs) && timers.active) Native.timer(this, timers)
+        else Native.cancel(this, Native.TIMER_ID)
     }
 
     private fun classSoon(s: ClassSlot) {
@@ -265,6 +287,7 @@ class Listener : NotificationListenerService() {
     }
 
     fun prefsChanged() {
+        syncNative()
         island?.prefsChanged()
     }
 
@@ -288,6 +311,9 @@ class Listener : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
+        if (sbn.packageName != packageName) AppFilter.saw(prefs, sbn.packageName)
+        // User turned this app off
+        if (!AppFilter.allowed(prefs, sbn.packageName)) return
         live.posted(sbn)
         val isl = island ?: return
         if (!prefs.notifs) return

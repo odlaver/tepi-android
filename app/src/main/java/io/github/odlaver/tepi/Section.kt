@@ -1,6 +1,7 @@
 package io.github.odlaver.tepi
 
 import android.app.AlertDialog
+import android.os.Build
 import android.content.Intent
 import android.net.Uri
 import android.widget.LinearLayout
@@ -35,6 +36,7 @@ class Section : Page() {
             changed()
             Listener.instance?.test()
         }
+        nativeEngine()
         label(getString(R.string.gestures))
         val h = group()
         for ((t, d, i) in listOf(
@@ -48,6 +50,35 @@ class Section : Page() {
         addButton(button(getString(R.string.test), icon = Icon.Play) { Listener.instance?.test() }, 12f)
     }
 
+    // HyperOS Super Island: shown only where it exists
+    private fun nativeEngine() {
+        if (!Native.hasIsland()) return
+        label(getString(R.string.native_title))
+        val g = group()
+        when {
+            Native.protocol(this) < 3 -> row(g, getString(R.string.native_old), null, icon = Icon.Info)
+            !Native.canPost(this) -> row(g, getString(R.string.native_notif), getString(R.string.native_notif_sub), button(getString(R.string.grant)) {
+                if (Build.VERSION.SDK_INT >= 33) requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+                else openAppNotifications()
+            }, Icon.Bell)
+            !Native.featured(this) -> row(g, getString(R.string.native_featured), getString(R.string.native_featured_sub), button(getString(R.string.open)) {
+                openAppNotifications()
+            }, Icon.Spark)
+            else -> toggle(g, getString(R.string.native_use), getString(R.string.native_use_sub), prefs.bool("engine.native", true), icon = Icon.Layers) {
+                prefs.set("engine.native", it); changed(); Listener.instance?.syncNative()
+            }
+        }
+    }
+
+    private fun openAppNotifications() {
+        startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, packageName))
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (intent.getStringExtra(MODE) == ISLAND) rebuild()
+    }
+
     private fun activities() {
         header(getString(R.string.section_activities))
         val g = group()
@@ -56,6 +87,7 @@ class Section : Page() {
         toggle(g, getString(R.string.lyrics_online), getString(R.string.lyrics_online_sub), prefs.lyricsOnline, icon = Icon.Globe) { prefs.lyricsOnline = it; changed() }
         label(getString(R.string.messages))
         val m = group()
+        row(m, getString(R.string.apps), getString(R.string.apps_row_sub), icon = Icon.Layers) { startActivity(Intent(this, Apps::class.java)) }
         toggle(m, getString(R.string.notifs), getString(R.string.notifs_sub), prefs.notifs, icon = Icon.Chat) { prefs.notifs = it }
         toggle(m, getString(R.string.notif_content), getString(R.string.notif_content_sub), prefs.notifContent, icon = Icon.Eye) { prefs.notifContent = it }
         label(getString(R.string.system))

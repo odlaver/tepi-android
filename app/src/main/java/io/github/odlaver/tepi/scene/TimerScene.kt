@@ -7,13 +7,14 @@ import io.github.odlaver.tepi.Timers
 import kotlin.math.min
 
 // Running timer, or a picker when idle
-class TimerScene(host: Host, private val timers: Timers) : Scene(host) {
+class TimerScene(host: Host, private val timers: Timers, private val native: () -> Boolean = { false }) : Scene(host) {
     override val id = "timer"
     override val priority = 50
     private val tmp = RectF()
     private val hits = ArrayList<Pair<RectF, () -> Unit>>()
 
-    override fun live() = timers.active
+    // System island shows it instead
+    override fun live() = timers.active && !native()
     override fun keepOpen() = true
     override fun tab() = true
     override fun ticking() = timers.active && !timers.paused
