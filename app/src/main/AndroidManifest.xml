@@ -64,6 +64,10 @@
             android:taskAffinity=""
             android:theme="@style/Tepi.Hop" />
 
+        <receiver
+            android:name=".Answer"
+            android:exported="false" />
+
         <activity
             android:name=".Apps"
             android:exported="false" />

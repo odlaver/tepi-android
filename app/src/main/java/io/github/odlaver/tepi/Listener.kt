@@ -70,8 +70,8 @@ class Listener : NotificationListenerService() {
         timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh(); syncNative() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
         agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
-        pc = Pc(agenda.vault, prefs) { island?.refresh() }
-        live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh() }
+        pc = Pc(agenda.vault, prefs) { island?.refresh(); syncAsk() }
+        live = Live(this, prefs, { n, pkg -> n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: appIcon(pkg) }) { island?.refresh(); syncProgress() }
         watch = Watch(this, prefs, brief = { k, t -> briefs?.show(k, t) }, lowBattery = { lowBattery(it) }, privacy = { cam, mic ->
             privacyScene?.let { it.cam = cam; it.mic = mic }
             island?.refresh()
@@ -167,14 +167,14 @@ class Listener : NotificationListenerService() {
         privacyScene = pv
         isl.register(br)
         isl.register(pv)
-        isl.register(AgentScene(isl, pc))
+        isl.register(AgentScene(isl, pc) { Native.on(this, prefs) })
         translateScene = io.github.odlaver.tepi.scene.TranslateScene(isl).also { isl.register(it) }
         isl.home.rows.add(AgentRow(isl, pc))
         isl.register(IncomingScene(isl, live))
         isl.register(CallScene(isl, live))
         isl.register(NavScene(isl, live))
         isl.register(ClockScene(isl, live))
-        isl.register(ProgressScene(isl, live))
+        isl.register(ProgressScene(isl, live) { Native.on(this, prefs) })
         isl.home.rows.add(0, TimerRow(isl, timers, ts))
         isl.home.rows.add(1, ClassRow(isl, agenda))
         isl.home.rows.add(2, PrayerRow(isl, reminders))
@@ -234,6 +234,24 @@ class Listener : NotificationListenerService() {
         Glyph.Bolt -> Icon.Bolt
         Glyph.Book -> Icon.Book
         Glyph.Check -> Icon.Check
+    }
+
+    private val shownProgress = HashSet<Int>()
+    private val recentMessages = LinkedHashMap<String, Message>()
+
+    // Downloads in the system island; drop finished ones
+    private fun syncProgress() {
+        val on = prefs.enabled && Native.on(this, prefs)
+        val now = HashSet<Int>()
+        if (on) for (it in live.of(LiveKind.Progress)) { Native.progress(this, it); now.add(Native.progressId(it.key)) }
+        for (id in shownProgress - now) Native.cancel(this, id)
+        shownProgress.clear(); shownProgress.addAll(now)
+    }
+
+    // First pending agent request, or nothing
+    private fun syncAsk() {
+        val first = pc.asks.firstOrNull()
+        if (first != null && prefs.enabled && Native.on(this, prefs)) Native.ask(this, first) else Native.cancel(this, Native.ASK_ID)
     }
 
     // Timer in the system island, or nowhere
@@ -314,7 +332,10 @@ class Listener : NotificationListenerService() {
             "focus" -> timers.focus(25)
             "timer" -> timerScene?.let { isl.expand(it) }
             "note" -> newNote()
-            else -> return false
+            else -> if (what.startsWith("reply:")) {
+                val m = recentMessages[what.removePrefix("reply:")] ?: return false
+                isl.messages.replyTo(m)
+            } else return false
         }
         return true
     }
@@ -352,9 +373,13 @@ class Listener : NotificationListenerService() {
         val icon = n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: badge
         val reply = if (reveal) n.actions?.firstOrNull { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true } else null
         val others = if (reveal) n.actions?.filter { it !== reply && it.remoteInputs.isNullOrEmpty() && it.actionIntent != null }?.take(2).orEmpty() else emptyList()
-        val m = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others, app, badge, sbn.postTime)
+        val built = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others, app, badge, sbn.postTime)
         else Message(sbn.key, app, getString(R.string.new_message), badge, n.contentIntent, app = app, appIcon = badge, at = sbn.postTime)
-        isl.show(m)
+        recentMessages.remove(built.key)
+        recentMessages[built.key] = built
+        while (recentMessages.size > 20) recentMessages.remove(recentMessages.keys.first())
+        // System island when on; Tepi's card otherwise
+        if (Native.on(this, prefs)) Native.message(this, built) else isl.show(built)
     }
 
     private fun isMessage(n: Notification): Boolean {

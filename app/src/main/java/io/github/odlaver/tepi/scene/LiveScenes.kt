@@ -260,7 +260,8 @@ class CallScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Call) {
     }
 }
 
-class ProgressScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Progress) {
+class ProgressScene(host: Host, live: Live, private val native: () -> Boolean = { false }) : LiveScene(host, live, LiveKind.Progress) {
+    override fun live() = !native() && super.live()
     override val id = "progress"
     override val priority = 30
     override fun ticking() = live.of(LiveKind.Progress).any { it.indeterminate }

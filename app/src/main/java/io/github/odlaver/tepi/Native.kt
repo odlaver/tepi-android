@@ -12,15 +12,106 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.os.Build
 import android.provider.Settings
+import io.github.d4viddf.hyperisland_kit.HyperAction
 import io.github.d4viddf.hyperisland_kit.HyperIslandNotification
 import io.github.d4viddf.hyperisland_kit.HyperPicture
+import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoLeft
+import io.github.d4viddf.hyperisland_kit.models.ImageTextInfoRight
+import io.github.d4viddf.hyperisland_kit.models.PicInfo
+import io.github.d4viddf.hyperisland_kit.models.TextInfo
 import io.github.d4viddf.hyperisland_kit.models.TimerInfo
+import io.github.odlaver.tepi.scene.Message
 
 // HyperOS Super Island through focus notifications
 object Native {
     private const val CHANNEL = "island"
     const val TIMER_ID = 7001
     const val ALERT_ID = 7002
+    const val MESSAGE_ID = 7003
+    const val ASK_ID = 7004
+    private const val PROGRESS_BASE = 7100
+
+    fun progressId(key: String) = PROGRESS_BASE + (key.hashCode() and 0x3f)
+
+    private fun hop(c: Context, what: String, req: Int): PendingIntent =
+        PendingIntent.getActivity(c, req, Intent(c, Open::class.java).putExtra(Open.EXTRA, what).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+
+    // Island needs to know how to fire it
+    private fun kind(p: PendingIntent) = when {
+        Build.VERSION.SDK_INT < 31 -> 2
+        p.isActivity -> 1
+        p.isService -> 3
+        else -> 2
+    }
+
+    private fun clear(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+
+    // Avatar left, name and text right; Reply opens Tepi's input
+    fun message(c: Context, m: Message) {
+        val avatar = m.icon ?: glyph(Icon.Chat)
+        val b = HyperIslandNotification.Builder(c, "tepi_msg", m.title)
+            .addPicture(HyperPicture("who", avatar))
+            .addPicture(HyperPicture("blank", clear()))
+            .setEnableFloat(true)
+            .setIslandFirstFloat(true)
+            .setShowNotification(false)
+            .setReopen(true)
+            .setIslandConfig(timeout = 8000, dismissible = true, expandedTimeMs = 5000)
+            .setBaseInfo(type = 2, title = m.title, content = m.text.ifEmpty { m.app })
+            .setIconTextInfo(picKey = "who", title = m.title, content = m.text.ifEmpty { m.app })
+            .setBigIslandInfo(
+                left = ImageTextInfoLeft(1, PicInfo(1, "who"), TextInfo("", "")),
+                right = ImageTextInfoRight(1, PicInfo(1, "blank"), TextInfo(m.title, m.text)),
+            )
+            .setSmallIsland("who")
+        val acts = ArrayList<HyperAction>()
+        if (m.reply != null) acts.add(HyperAction("reply", c.getString(R.string.reply), hop(c, "reply:" + m.key, m.key.hashCode()), 1, titleColor = "#FFFFFF"))
+        for ((i, a) in m.actions.take(2).withIndex()) acts.add(HyperAction("act$i", a.title, a.actionIntent, kind(a.actionIntent), titleColor = "#FFFFFF"))
+        if (acts.isNotEmpty()) {
+            b.setTextButtons(*acts.toTypedArray())
+            acts.forEach { b.addHiddenAction(it) }
+        }
+        post(c, MESSAGE_ID, b, m.title, m.text, false, m.intent)
+    }
+
+    // Download or upload ring
+    fun progress(c: Context, it: LiveItem) {
+        val pct = if (it.max > 0) (it.progress * 100 / it.max).coerceIn(0, 100) else 0
+        val b = HyperIslandNotification.Builder(c, "tepi_progress", it.title)
+            .addPicture(HyperPicture("app", it.icon ?: glyph(Icon.Download)))
+            .setIslandConfig(priority = 1, dismissible = true)
+            .setShowNotification(false)
+            .setBaseInfo(title = it.title, content = if (it.indeterminate) it.text.ifEmpty { " " } else "$pct%", pictureKey = "app")
+            .setProgressBar(pct)
+            .setBigIslandProgressCircle("app", "", pct)
+            .setSmallIslandCircularProgress("app", pct)
+        post(c, progressId(it.key), b, it.title, "$pct%", true, it.intent)
+    }
+
+    // Permission from an agent on the laptop
+    fun ask(c: Context, ask: AgentAsk) {
+        val title = c.getString(R.string.agent_asks, ask.agent, ask.tool)
+        val body = ask.key.ifEmpty { ask.detail }.take(300)
+        val deny = PendingIntent.getBroadcast(c, ask.id, Intent(c, Answer::class.java).putExtra(Answer.ID, ask.id).putExtra(Answer.WHAT, "deny"),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val allow = PendingIntent.getActivity(c, ask.id, Intent(c, Confirm::class.java).putExtra(Confirm.ID, ask.id).putExtra(Confirm.WHAT, ask.key)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val b = HyperIslandNotification.Builder(c, "tepi_agent", title)
+            .addPicture(HyperPicture("pc", glyph(Icon.Laptop)))
+            .setEnableFloat(true)
+            .setIslandFirstFloat(true)
+            .setIslandConfig(priority = 3, dismissible = false, expandedTimeMs = 15000)
+            .setBaseInfo(title = title, content = body, subTitle = ask.project, pictureKey = "pc")
+            .setBigIslandInfo(left = ImageTextInfoLeft(1, PicInfo(1, "pc"), TextInfo(ask.agent, ask.tool)))
+            .setSmallIsland("pc")
+        val acts = ArrayList<HyperAction>()
+        acts.add(HyperAction("deny", c.getString(R.string.deny), deny, 2, titleColor = "#FFFFFF"))
+        if (!ask.truncated) acts.add(HyperAction("allow", c.getString(R.string.allow), allow, 1, bgColor = "#FFFFFF", titleColor = "#000000"))
+        b.setTextButtons(*acts.toTypedArray())
+        acts.forEach { b.addHiddenAction(it) }
+        post(c, ASK_ID, b, title, body, true, null)
+    }
 
     // Phone has the system island at all
     @SuppressLint("PrivateApi")
@@ -64,7 +155,7 @@ object Native {
     private fun open(c: Context): PendingIntent =
         PendingIntent.getActivity(c, 0, Intent(c, Open::class.java).putExtra(Open.EXTRA, "timer").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE)
 
-    private fun post(c: Context, id: Int, island: HyperIslandNotification, title: String, text: String, ongoing: Boolean) {
+    private fun post(c: Context, id: Int, island: HyperIslandNotification, title: String, text: String, ongoing: Boolean, tap: PendingIntent? = null) {
         channel(c)
         val n = Notification.Builder(c, CHANNEL)
             .setSmallIcon(R.drawable.ic_mark)
@@ -72,7 +163,7 @@ object Native {
             .setContentText(text)
             .setOngoing(ongoing)
             .setOnlyAlertOnce(true)
-            .setContentIntent(open(c))
+            .setContentIntent(tap ?: open(c))
             .setCategory(if (ongoing) Notification.CATEGORY_STOPWATCH else Notification.CATEGORY_REMINDER)
             .addExtras(island.buildResourceBundle())
             .build()
