@@ -141,7 +141,6 @@
     <string name="t_plus">+1 min</string>
     <string name="t_stop">Stop</string>
     <string name="t_lap_n">Lap %1$d</string>
-    <string name="t_start">Start</string>
     <string name="t_focus_n">Focus %1$d</string>
     <string name="t_min_n">%1$d min</string>
     <string name="in_hm">in %1$dh %2$dm</string>
@@ -316,7 +315,7 @@
     <string name="apps_all">Other apps</string>
     <string name="search">Search</string>
     <string name="tab_agenda">Agenda</string>
-    <string name="agenda_empty">Classes and tasks appear here once Kulia, Todoist, Notion, or a calendar is connected.</string>
+    <string name="agenda_empty">No classes or tasks yet.</string>
     <string name="connect_now">Connect</string>
     <string name="agenda_clear">No classes today and no tasks due</string>
     <string name="cancelled">Cancelled</string>
@@ -324,7 +323,7 @@
     <string name="tab_prayer">Prayer</string>
     <string name="prayer_off">Prayer times are off. Pick a city to see today\'s times here.</string>
     <string name="see_all">See all</string>
-    <string name="shelf_tab_empty">Share text or a file to Tepi, or select text and pick Save to Tepi.</string>
+    <string name="shelf_tab_empty">Share text or a file to Tepi.</string>
     <string name="shelf_text">Text · tap to copy</string>
     <string name="shelf_file">File · tap to open</string>
     <string name="online">online</string>

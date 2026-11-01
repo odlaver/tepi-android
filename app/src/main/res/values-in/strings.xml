@@ -138,7 +138,6 @@
     <string name="t_plus">+1 menit</string>
     <string name="t_stop">Berhenti</string>
     <string name="t_lap_n">Putaran %1$d</string>
-    <string name="t_start">Mulai</string>
     <string name="t_focus_n">Fokus %1$d</string>
     <string name="t_min_n">%1$d menit</string>
     <string name="in_hm">%1$dj %2$dm lagi</string>
@@ -313,7 +312,7 @@
     <string name="apps_all">Aplikasi lain</string>
     <string name="search">Cari</string>
     <string name="tab_agenda">Agenda</string>
-    <string name="agenda_empty">Kelas dan tugas tampil di sini setelah Kulia, Todoist, Notion, atau kalender tersambung.</string>
+    <string name="agenda_empty">Belum ada kelas atau tugas.</string>
     <string name="connect_now">Sambungkan</string>
     <string name="agenda_clear">Tidak ada kelas hari ini dan tidak ada tugas</string>
     <string name="cancelled">Batal</string>
@@ -321,7 +320,7 @@
     <string name="tab_prayer">Ibadah</string>
     <string name="prayer_off">Waktu sholat masih mati. Pilih kota untuk melihat jadwal hari ini.</string>
     <string name="see_all">Lihat semua</string>
-    <string name="shelf_tab_empty">Bagikan teks atau file ke Tepi, atau pilih teks lalu Simpan ke Tepi.</string>
+    <string name="shelf_tab_empty">Bagikan teks atau file ke Tepi.</string>
     <string name="shelf_text">Teks · ketuk untuk salin</string>
     <string name="shelf_file">File · ketuk untuk buka</string>
     <string name="online">tersambung</string>

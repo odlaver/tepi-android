@@ -78,7 +78,9 @@ class TimerScene(host: Host, private val timers: Timers) : Scene(host) {
     }
 
     private fun picker(c: Canvas, r: RectF, a: Float) {
-        ui.text(c, host.ctx.getString(R.string.t_start), ui.label, r.left, ui.baseline(ui.label, r.top + ui.dp(9f)), r.width(), a)
+        // Same header as the other tabs
+        ui.icon(c, io.github.odlaver.tepi.Icon.Timer, r.left + ui.dp(9f), r.top + ui.dp(9f), ui.dp(16f), ui.sub, a)
+        ui.text(c, host.ctx.getString(R.string.t_timer), ui.label, r.left + ui.dp(26f), ui.baseline(ui.label, r.top + ui.dp(9f)), r.width() - ui.dp(26f), a)
         val y = r.top + ui.dp(18f) + ui.s8
         row(c, r, y, listOf(
             host.ctx.getString(R.string.t_focus_n, 25) to { timers.focus(25) },
