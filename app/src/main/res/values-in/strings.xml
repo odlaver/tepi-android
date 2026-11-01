@@ -331,4 +331,6 @@
     <string name="st_ready">siap</string>
     <string name="music_idle">Tidak ada yang diputar</string>
     <string name="open_player">Buka pemutar</string>
+    <string name="native_lyrics">Lirik di Super Island (eksperimen)</string>
+    <string name="native_lyrics_sub">Island sendiri di samping island musik HyperOS, satu baris setiap kali.</string>
 </resources>

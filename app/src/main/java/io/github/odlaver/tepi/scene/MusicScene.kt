@@ -71,7 +71,18 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
         changed()
     }
 
+    // Line at the playhead, for the system island
+    fun lineNow(): String? {
+        if (!prefs.lyrics) return null
+        val s = song ?: return null
+        if (s.lines.isEmpty() || !media.playing) return null
+        val i = s.indexAt(media.positionMs() + 150)
+        return if (i in s.lines.indices) s.lines[i].text.takeIf { it.isNotBlank() } else null
+    }
+
     override fun live(): Boolean {
+        // HyperOS draws its own music island
+        if (prefs.bool("engine.native", true) && io.github.odlaver.tepi.Native.ready(host.ctx)) return false
         val tr = media.track ?: return false
         if (tr.key == dismissedKey || !prefs.music || !io.github.odlaver.tepi.AppFilter.allowed(prefs, tr.pkg)) return false
         return media.playing || (pausedAt > 0 && SystemClock.uptimeMillis() - pausedAt < PAUSED_MS)

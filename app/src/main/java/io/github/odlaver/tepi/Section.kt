@@ -64,8 +64,13 @@ class Section : Page() {
             !Native.featured(this) -> row(g, getString(R.string.native_featured), getString(R.string.native_featured_sub), button(getString(R.string.open)) {
                 openAppNotifications()
             }, Icon.Spark)
-            else -> toggle(g, getString(R.string.native_use), getString(R.string.native_use_sub), prefs.bool("engine.native", true), icon = Icon.Layers) {
-                prefs.set("engine.native", it); changed(); Listener.instance?.syncNative()
+            else -> {
+                toggle(g, getString(R.string.native_use), getString(R.string.native_use_sub), prefs.bool("engine.native", true), icon = Icon.Layers) {
+                    prefs.set("engine.native", it); changed(); Listener.instance?.syncNative(); rebuild()
+                }
+                if (prefs.bool("engine.native", true)) toggle(g, getString(R.string.native_lyrics), getString(R.string.native_lyrics_sub), prefs.bool("native.lyrics", false), icon = Icon.Lyrics) {
+                    prefs.set("native.lyrics", it); Listener.instance?.syncNative()
+                }
             }
         }
     }

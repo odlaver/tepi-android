@@ -81,7 +81,7 @@ class Listener : NotificationListenerService() {
     override fun onListenerConnected() {
         instance = this
         connected = true
-        media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
+        media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged(); lyricTick.run() }.also { it.start() }
         applyEnabled()
     }
 
@@ -254,8 +254,27 @@ class Listener : NotificationListenerService() {
         if (first != null && prefs.enabled && Native.on(this, prefs)) Native.ask(this, first) else Native.cancel(this, Native.ASK_ID)
     }
 
+    private val ticker = android.os.Handler(android.os.Looper.getMainLooper())
+    private var lyricShown: String? = null
+
+    // Experiment: lyric line into the system island while playing
+    private val lyricTick = object : Runnable {
+        override fun run() {
+            ticker.removeCallbacks(this)
+            val m = media
+            val on = prefs.enabled && prefs.bool("native.lyrics", false) && Native.on(this@Listener, prefs)
+            val line = if (on) island?.music?.lineNow() else null
+            val tr = m?.track
+            if (line != null && tr != null) {
+                if (line != lyricShown) { Native.lyric(this@Listener, tr, line); lyricShown = line }
+            } else if (lyricShown != null) { Native.cancel(this@Listener, Native.LYRIC_ID); lyricShown = null }
+            if (on && m?.playing == true) ticker.postDelayed(this, 300)
+        }
+    }
+
     // Timer in the system island, or nowhere
     fun syncNative() {
+        lyricTick.run()
         if (prefs.enabled && Native.on(this, prefs) && timers.active) Native.timer(this, timers)
         else Native.cancel(this, Native.TIMER_ID)
     }

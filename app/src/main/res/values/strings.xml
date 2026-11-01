@@ -334,4 +334,6 @@
     <string name="st_ready">ready</string>
     <string name="music_idle">Nothing is playing</string>
     <string name="open_player">Open player</string>
+    <string name="native_lyrics">Lyrics in the Super Island (experiment)</string>
+    <string name="native_lyrics_sub">Its own island next to HyperOS\'s music island, one line at a time.</string>
 </resources>
