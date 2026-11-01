@@ -50,7 +50,7 @@ Tepi juga bisa dibuka dari tile di Quick Settings dan dari pintasan saat ikon Te
 
 ## Pasang
 
-APK belum dirilis. Sementara ini, build sendiri dari sumbernya (lihat [Build sendiri](#build-sendiri)). Butuh Android 10 ke atas dengan prosesor arm64.
+Unduh APK terbaru di [Releases](https://github.com/odlaver/tepi-android/releases), lalu pasang. Butuh Android 10 ke atas dengan prosesor arm64. APK ditandatangani R. Revaldo Vabiansyah; pembaruan berikutnya bisa dipasang di atasnya tanpa menghapus aplikasi.
 
 Semua izin bisa dinyalakan dari layar pertama Tepi:
 
