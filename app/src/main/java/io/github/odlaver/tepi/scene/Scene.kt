@@ -11,6 +11,9 @@ import io.github.odlaver.tepi.Ui
 interface Host {
     val ui: Ui
     val ctx: Context
+
+    // Phone is on the lock screen
+    val locked: Boolean
     fun refresh()
     fun expand(scene: Scene)
     fun collapse()
@@ -41,6 +44,9 @@ abstract class Scene(protected val host: Host) {
 
     // Shown as a swipe page when the island is open
     open fun tab() = live() && !card()
+
+    // Personal content: hidden on the lock screen
+    open val personal = false
 
     // Compact: zones beside the camera
     open fun wing() = 0f

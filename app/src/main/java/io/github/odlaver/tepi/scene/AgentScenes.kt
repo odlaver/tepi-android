@@ -93,6 +93,7 @@ class AgentScene(host: Host, private val pc: Pc) : Scene(host) {
 
 // Agent sessions on Home
 class AgentRow(private val host: Host, private val pc: Pc) : HomeRow {
+    override fun personal() = true
     override fun visible() = pc.paired && pc.runs.isNotEmpty()
     override fun height(w: Float) = host.ui.dp(38f)
     override fun draw(c: Canvas, r: RectF, a: Float) {

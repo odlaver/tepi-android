@@ -56,6 +56,17 @@ class Island(
 
     override val ui = Ui(context)
     override val ctx: Context get() = context
+    private val keyguard = context.getSystemService(android.app.KeyguardManager::class.java)
+    override val locked get() = keyguard.isKeyguardLocked
+
+    // Lock and unlock change what may be shown
+    private val lockWatch = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            if (locked && opened?.personal == true) opened = null
+            refresh()
+        }
+    }
+    private var listening = false
     private val wm = context.getSystemService(WindowManager::class.java)
     private val main = Handler(Looper.getMainLooper())
     private val touchable get() = type == WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -146,6 +157,12 @@ class Island(
         place(hole, false)
         wm.addView(this, lp)
         attached = true
+        try {
+            context.applicationContext.registerReceiver(lockWatch, android.content.IntentFilter().apply {
+                addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_USER_PRESENT)
+            }, Context.RECEIVER_NOT_EXPORTED)
+            listening = true
+        } catch (_: Exception) { }
         if (probeCtx != null && Settings.canDrawOverlays(context)) {
             val p = WindowManager.LayoutParams(1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT)
@@ -162,6 +179,7 @@ class Island(
         Choreographer.getInstance().removeFrameCallback(frame)
         ticking = false
         wm.removeView(this)
+        if (listening) { try { context.applicationContext.unregisterReceiver(lockWatch) } catch (_: Exception) { }; listening = false }
         if (probing) { try { probeCtx?.getSystemService(WindowManager::class.java)?.removeView(probe) } catch (_: Exception) { }; probing = false }
         attached = false
     }
@@ -234,8 +252,8 @@ class Island(
     private fun homeActions(): List<Action> {
         val out = ArrayList<Action>()
         for (f in homeExtras) f()?.let { out.add(it) }
-        out.add(Action(context.getString(R.string.settings), icon = Icon.Gear) { open(Intent(context, MainActivity::class.java)); collapse() })
-        return out.take(3)
+        out.add(Action(context.getString(R.string.settings), icon = Icon.Gear, personal = true) { open(Intent(context, MainActivity::class.java)); collapse() })
+        return out.filter { !(locked && it.personal) }.take(3)
     }
 
     private fun menuItems(): List<Action> {
@@ -244,8 +262,8 @@ class Island(
         out.add(Action(context.getString(R.string.home), icon = Icon.Home) { main.post { openHome() } })
         if (hiddenUntil > SystemClock.uptimeMillis()) out.add(Action(context.getString(R.string.unhide), icon = Icon.Eye) { hiddenUntil = 0; refresh() })
         else out.add(Action(context.getString(R.string.hide_hour), icon = Icon.Hide) { hiddenUntil = SystemClock.uptimeMillis() + 3_600_000L; refresh() })
-        out.add(Action(context.getString(R.string.settings), icon = Icon.Gear) { open(Intent(context, MainActivity::class.java)) })
-        return out
+        out.add(Action(context.getString(R.string.settings), icon = Icon.Gear, personal = true) { open(Intent(context, MainActivity::class.java)) })
+        return out.filter { !(locked && it.personal) }
     }
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
@@ -314,8 +332,10 @@ class Island(
     private fun choose() {
         val o = opened
         if (o != null && o !== home && o !== menu && !o.live() && !o.keepOpen()) opened = null
-        val live = scenes.filter { it.live() }.sortedByDescending { it.priority }
-        val quiet = landscape || fullscreen || hiddenUntil > SystemClock.uptimeMillis()
+        val lock = locked
+        val live = scenes.filter { it.live() && !(lock && it.personal) }.sortedByDescending { it.priority }
+        // The fullscreen probe goes dark under the lock screen; ignore it there
+        val quiet = landscape || (fullscreen && !lock) || hiddenUntil > SystemClock.uptimeMillis() || (lock && !prefs.bool("lockscreen", true))
         val shown = if (quiet) live.filter { it.priority >= URGENT } else live
         val op = opened
         when {
@@ -629,7 +649,7 @@ class Island(
 
     // Next or previous live scene, Home last
     // Home, then features that have something to show
-    private fun pages(): List<Scene> = listOf(home) + scenes.filter { it.tab() }.sortedBy { it.order }
+    private fun pages(): List<Scene> = listOf(home) + scenes.filter { it.tab() && !(locked && it.personal) }.sortedBy { it.order }
 
     private fun page(dir: Int) {
         val list = pages()

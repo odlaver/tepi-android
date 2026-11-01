@@ -31,6 +31,9 @@ class Section : Page() {
         toggle(g, getString(R.string.camera_tap), getString(if (a11y()) R.string.camera_tap_sub else R.string.camera_tap_off), prefs.cameraTap, a11y(), Icon.Camera) {
             prefs.cameraTap = it; changed()
         }
+        toggle(g, getString(R.string.lockscreen), getString(R.string.lockscreen_sub), prefs.bool("lockscreen", true), icon = Icon.Shield) {
+            prefs.set("lockscreen", it); changed()
+        }
         slider(g, getString(R.string.offset), Prefs.OFFSET_MIN, Prefs.OFFSET_MAX, prefs.offsetDp, { (if (it > 0) "+$it" else "$it") + " dp" }, Icon.Pin) {
             prefs.offsetDp = it
             changed()

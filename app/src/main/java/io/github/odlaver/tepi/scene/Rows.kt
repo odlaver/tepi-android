@@ -42,6 +42,7 @@ class TimerRow(private val host: Host, private val timers: Timers, private val s
 }
 
 class NoteRow(private val host: Host, private val notes: Notes, private val openAll: () -> Unit) : HomeRow {
+    override fun personal() = true
     override fun visible() = notes.all().isNotEmpty()
     override fun height(w: Float) = host.ui.dp(38f)
     override fun draw(c: Canvas, r: RectF, a: Float) {
@@ -53,6 +54,7 @@ class NoteRow(private val host: Host, private val notes: Notes, private val open
 
 // Up to three shelf items as chips
 class ShelfRow(private val host: Host, private val shelf: Shelf, private val picked: (ShelfItem) -> Unit) : HomeRow {
+    override fun personal() = true
     private val hits = ArrayList<Pair<RectF, ShelfItem>>()
     override fun visible() = shelf.all().isNotEmpty()
     override fun height(w: Float) = host.ui.dp(12f) + host.ui.s8 + host.ui.btnH

@@ -11,12 +11,14 @@ import kotlin.math.max
 // A block on Home, fed by a feature
 interface HomeRow {
     fun visible(): Boolean
+    // Hidden on the lock screen
+    fun personal() = false
     fun height(w: Float): Float
     fun draw(c: Canvas, r: RectF, a: Float)
     fun tap(x: Float, y: Float) = false
 }
 
-class Action(val label: String, val primary: Boolean = false, val icon: io.github.odlaver.tepi.Icon? = null, val run: () -> Unit)
+class Action(val label: String, val primary: Boolean = false, val icon: io.github.odlaver.tepi.Icon? = null, val personal: Boolean = false, val run: () -> Unit)
 
 // Opened on demand: camera tap, tile, shortcut
 class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(host) {
@@ -37,10 +39,12 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
 
     override fun panelHeight(w: Float): Float {
         var h = header()
-        for (row in rows) if (row.visible()) h += ui.s8 + row.height(w - ui.s24) + ui.s20
+        for (row in rows) if (shows(row)) h += ui.s8 + row.height(w - ui.s24) + ui.s20
         if (actions().isNotEmpty()) h += ui.s12 + ui.btnH
         return h
     }
+
+    private fun shows(row: HomeRow) = row.visible() && !(host.locked && row.personal())
 
     private fun greeting(): String {
         val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
@@ -61,7 +65,7 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
         var y = r.top + header()
         placed.clear()
         for (row in rows) {
-            if (!row.visible()) continue
+            if (!shows(row)) continue
             y += ui.s8
             val h = row.height(r.width() - ui.s24) + ui.s20
             val box = RectF(r.left, y, r.right, y + h)

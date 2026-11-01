@@ -191,9 +191,9 @@ class Listener : NotificationListenerService() {
         isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
         isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })
         isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true, icon = Icon.Timer) { timers.focus(25) } else null }
-        isl.homeExtras.add { Action(getString(R.string.note_new), icon = Icon.Note) { newNote() } }
+        isl.homeExtras.add { Action(getString(R.string.note_new), icon = Icon.Note, personal = true) { newNote() } }
         isl.menuExtras.add { Action(getString(R.string.t_timer), icon = Icon.Timer) { isl.expand(ts) } }
-        isl.menuExtras.add { Action(getString(R.string.note_new), icon = Icon.Note) { newNote() } }
+        isl.menuExtras.add { Action(getString(R.string.note_new), icon = Icon.Note, personal = true) { newNote() } }
     }
 
     private fun section(mode: String) {

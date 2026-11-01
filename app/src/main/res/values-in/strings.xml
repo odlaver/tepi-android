@@ -323,4 +323,6 @@
     <string name="music_idle">Tidak ada yang diputar</string>
     <string name="open_player">Buka pemutar</string>
     <string name="tr_downloading">Mengunduh model terjemahan…</string>
+    <string name="lockscreen">Tampil di layar kunci</string>
+    <string name="lockscreen_sub">Hanya musik, timer, dan ibadah. Catatan, rak, agenda, dan isi pesan tetap tersembunyi sampai HP dibuka.</string>
 </resources>

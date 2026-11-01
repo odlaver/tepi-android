@@ -74,6 +74,7 @@ private val hm = DateFormat.getTimeInstance(DateFormat.SHORT)
 // Today's classes, then tasks
 class AgendaTab(host: Host, private val agenda: Agenda, private val connect: () -> Unit) : TabScene(host) {
     override val id = "agenda"
+    override val personal = true
     override val priority = 30
     override val order = 3
 
@@ -156,6 +157,7 @@ class PrayerTab(host: Host, private val rem: Reminders, private val setup: () ->
 
 class NotesTab(host: Host, private val notes: Notes, private val add: () -> Unit, private val all: () -> Unit) : TabScene(host) {
     override val id = "notes"
+    override val personal = true
     override val priority = 15
     override val order = 6
 
@@ -181,6 +183,7 @@ class NotesTab(host: Host, private val notes: Notes, private val add: () -> Unit
 
 class ShelfTab(host: Host, private val shelf: Shelf, private val pick: (ShelfItem) -> Unit, private val all: () -> Unit) : TabScene(host) {
     override val id = "shelf"
+    override val personal = true
     override val priority = 10
     override val order = 7
 
@@ -207,6 +210,7 @@ class ShelfTab(host: Host, private val shelf: Shelf, private val pick: (ShelfIte
 // Agent sessions on the laptop
 class AgentsTab(host: Host, private val pc: io.github.odlaver.tepi.Pc) : TabScene(host) {
     override val id = "agents"
+    override val personal = true
     override val priority = 12
     override val order = 5
     override fun tab() = pc.paired
