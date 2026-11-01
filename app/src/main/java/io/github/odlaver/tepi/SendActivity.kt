@@ -22,7 +22,7 @@ class SendActivity : Activity() {
             Intent.ACTION_SEND_MULTIPLE -> (if (Build.VERSION.SDK_INT >= 33) i.getParcelableArrayListExtra(Intent.EXTRA_STREAM, Uri::class.java) else i.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM)).orEmpty()
             else -> emptyList()
         }
-        if (pc == null || !pc.paired || uris.isEmpty()) {
+        if (pc == null || !pc.linked || uris.isEmpty()) {
             Toast.makeText(this, getString(R.string.pc_send_failed), Toast.LENGTH_SHORT).show()
             finish()
             return

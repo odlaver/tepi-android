@@ -359,11 +359,11 @@ class Listener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         if (sbn.packageName != packageName) AppFilter.saw(prefs, sbn.packageName)
         val own = sbn.packageName == packageName
-        val code = if (!own && pc.paired && pc.sendOtp) otpFrom(sbn) else null
+        val code = if (!own && pc.linked && pc.sendOtp) otpFrom(sbn) else null
         // User turned this app off
         if (!AppFilter.allowed(prefs, sbn.packageName)) return
         live.posted(sbn)
-        if (!own && code == null && pc.paired && pc.online) forward(sbn, rankingMap)
+        if (!own && code == null && pc.linked && pc.online) forward(sbn, rankingMap)
         val isl = island ?: return
         if (!prefs.notifs) return
         val n = sbn.notification

@@ -57,6 +57,8 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
     val host get() = prefs.str("pc.host", "")
     val name get() = prefs.str("pc.name", "")
     val paired get() = vault.get("pc.key") != null && host.isNotEmpty()
+    // Off with the master switch
+    val linked get() = running && paired
     var sendNotifs: Boolean
         get() = prefs.bool("pc.notifs", true)
         set(v) = prefs.set("pc.notifs", v)
@@ -168,6 +170,7 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
 
     fun stop() {
         running = false
+        online = false
         thread?.interrupt()
         thread = null
     }
@@ -220,7 +223,7 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
 
     // Fire and forget; dropped while away
     private fun send(body: JSONObject) {
-        if (!paired) return
+        if (!linked) return
         out.execute { key()?.let { call(it, host, "/phone/push", body) } }
     }
 
@@ -234,7 +237,7 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
     }
 
     fun notif(key: String, pkg: String, app: String, title: String, text: String, icon: Bitmap?) {
-        if (!paired || !sendNotifs || !online) return
+        if (!linked || !sendNotifs || !online) return
         val n = JSONObject().put("key", key).put("pkg", pkg).put("app", app).put("title", title.take(120)).put("text", text.take(400))
         // App icon once per app
         if (icon != null && synchronized(iconsSent) { iconsSent.add(pkg) }) {
@@ -246,11 +249,11 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
     }
 
     fun removed(key: String) {
-        if (paired && sendNotifs && online) send(JSONObject().put("removed", key))
+        if (linked && sendNotifs && online) send(JSONObject().put("removed", key))
     }
 
     fun otp(app: String, code: String) {
-        if (paired && sendOtp) send(JSONObject().put("otp", JSONObject().put("app", app).put("code", code)))
+        if (linked && sendOtp) send(JSONObject().put("otp", JSONObject().put("app", app).put("code", code)))
     }
 
     // Phone to laptop, in chunks; false on any failure
