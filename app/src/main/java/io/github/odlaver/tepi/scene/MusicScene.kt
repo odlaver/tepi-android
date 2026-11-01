@@ -71,6 +71,22 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
         changed()
     }
 
+    // Lyric pill under HyperOS's music island
+    inner class Drop(private val on: () -> Boolean) : Scene(host) {
+        override val id = "lyricdrop"
+        override val priority = 39
+        override fun live() = on() && prefs.lyrics && media.playing && currentLine() != null
+        override fun dropOnly() = true
+        override fun tab() = false
+        override fun ticking() = true
+        override fun rowWidth() = this@MusicScene.rowWidth()
+        override fun drawRow(c: Canvas, r: RectF, a: Float) = this@MusicScene.drawRow(c, r, a)
+        override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}
+        override fun panelHeight(w: Float) = 0f
+        override fun drawPanel(c: Canvas, r: RectF, a: Float) {}
+        override fun describe() = currentLine().orEmpty()
+    }
+
     // Line at the playhead, for the system island
     fun lineNow(): String? {
         if (!prefs.lyrics) return null

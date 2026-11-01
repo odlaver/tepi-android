@@ -38,11 +38,11 @@ object Native {
             .addPicture(HyperPicture("blank", clear()))
             .setShowNotification(false)
             .setEnableFloat(false)
-            .setIslandConfig(priority = 1, dismissible = true)
+            .setIslandConfig(priority = 3, dismissible = false)
             .setBaseInfo(title = line, content = listOf(track.title, track.artist).filter { it.isNotEmpty() }.joinToString(" · "), pictureKey = "art")
             .setBigIslandInfo(
                 left = ImageTextInfoLeft(1, PicInfo(1, "art"), TextInfo("", "")),
-                right = ImageTextInfoRight(1, PicInfo(1, "blank"), TextInfo(line, null)),
+                right = ImageTextInfoRight(1, PicInfo(1, "blank"), TextInfo(line, track.artist.ifEmpty { track.title })),
             )
             .setSmallIsland("art")
         post(c, LYRIC_ID, b, line, track.title, true, null)
@@ -75,7 +75,7 @@ object Native {
             .setIslandFirstFloat(true)
             .setShowNotification(false)
             .setReopen(true)
-            .setIslandConfig(timeout = 8000, dismissible = true, expandedTimeMs = 5000)
+            .setIslandConfig(timeout = 8000, dismissible = false, expandedTimeMs = 5000)
             .setBaseInfo(type = 2, title = m.title, content = m.text.ifEmpty { m.app })
             .setIconTextInfo(picKey = "who", title = m.title, content = m.text.ifEmpty { m.app })
             .setBigIslandInfo(
@@ -90,7 +90,7 @@ object Native {
             b.setTextButtons(*acts.toTypedArray())
             acts.forEach { b.addHiddenAction(it) }
         }
-        post(c, MESSAGE_ID, b, m.title, m.text, false, m.intent)
+        post(c, MESSAGE_ID, b, m.title, m.text, false, m.intent, public = false)
     }
 
     // Download or upload ring
@@ -98,7 +98,7 @@ object Native {
         val pct = if (it.max > 0) (it.progress * 100 / it.max).coerceIn(0, 100) else 0
         val b = HyperIslandNotification.Builder(c, "tepi_progress", it.title)
             .addPicture(HyperPicture("app", it.icon ?: glyph(Icon.Download)))
-            .setIslandConfig(priority = 1, dismissible = true)
+            .setIslandConfig(priority = 1, dismissible = false)
             .setShowNotification(false)
             .setBaseInfo(title = it.title, content = if (it.indeterminate) it.text.ifEmpty { " " } else "$pct%", pictureKey = "app")
             .setProgressBar(pct)
@@ -181,7 +181,7 @@ object Native {
     private fun open(c: Context): PendingIntent =
         PendingIntent.getActivity(c, 0, Intent(c, Open::class.java).putExtra(Open.EXTRA, "timer").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE)
 
-    private fun post(c: Context, id: Int, island: HyperIslandNotification, title: String, text: String, ongoing: Boolean, tap: PendingIntent? = null) {
+    private fun post(c: Context, id: Int, island: HyperIslandNotification, title: String, text: String, ongoing: Boolean, tap: PendingIntent? = null, public: Boolean = true) {
         channel(c)
         val n = Notification.Builder(c, CHANNEL)
             .setSmallIcon(R.drawable.ic_mark)
@@ -190,6 +190,7 @@ object Native {
             .setOngoing(ongoing)
             .setOnlyAlertOnce(true)
             .setContentIntent(tap ?: open(c))
+            .setVisibility(if (public) Notification.VISIBILITY_PUBLIC else Notification.VISIBILITY_PRIVATE)
             .setCategory(if (ongoing) Notification.CATEGORY_STOPWATCH else Notification.CATEGORY_REMINDER)
             .addExtras(island.buildResourceBundle())
             .build()
@@ -236,7 +237,7 @@ object Native {
         val b = HyperIslandNotification.Builder(c, "tepi_alert", title)
             .addPicture(HyperPicture("alert", glyph(icon)))
             .setBaseInfo(title = title, content = body.ifEmpty { " " }, pictureKey = "alert")
-            .setIslandConfig(priority = 2, timeout = ms.toInt(), dismissible = true, expandedTimeMs = ms.toInt())
+            .setIslandConfig(priority = 2, timeout = ms.toInt(), dismissible = false, expandedTimeMs = ms.toInt())
             .setSmallIsland("alert")
             .setEnableFloat(true)
             .setTimeout(ms)

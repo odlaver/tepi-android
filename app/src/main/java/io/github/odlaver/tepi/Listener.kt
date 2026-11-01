@@ -161,6 +161,7 @@ class Listener : NotificationListenerService() {
         timerScene = ts
         isl.register(al)
         isl.register(ts)
+        isl.register(isl.music.Drop { prefs.bool("native.lyrics", false) && Native.on(this, prefs) })
         val br = BriefScene(isl)
         val pv = PrivacyScene(isl)
         briefs = br
@@ -263,11 +264,10 @@ class Listener : NotificationListenerService() {
             ticker.removeCallbacks(this)
             val m = media
             val on = prefs.enabled && prefs.bool("native.lyrics", false) && Native.on(this@Listener, prefs)
+            // Drawn by Tepi under the system island; wake it on each new line
             val line = if (on) island?.music?.lineNow() else null
-            val tr = m?.track
-            if (line != null && tr != null) {
-                if (line != lyricShown) { Native.lyric(this@Listener, tr, line); lyricShown = line }
-            } else if (lyricShown != null) { Native.cancel(this@Listener, Native.LYRIC_ID); lyricShown = null }
+            if (line != lyricShown) { lyricShown = line; island?.refresh() }
+            Native.cancel(this@Listener, Native.LYRIC_ID)
             if (on && m?.playing == true) ticker.postDelayed(this, 300)
         }
     }

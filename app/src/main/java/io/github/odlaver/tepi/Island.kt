@@ -348,7 +348,13 @@ class Island(
             Kind.Compact -> {
                 val w = compactWidth(primary)
                 val row = primary?.rowWidth() ?: 0f
-                if (row > 0f) {
+                if (primary?.dropOnly() == true) {
+                    // Falls below HyperOS's own island
+                    val bw = row.coerceIn(ui.dp(120f), wide)
+                    val top = statusBottom + ui.dp(8f)
+                    target.set(cx - bw / 2, top, cx + bw / 2, top + ui.dp(32f))
+                    nk = bw; sy = top; rt = ui.dp(16f); rb = rt
+                } else if (row > 0f) {
                     val bw = row.coerceIn(w, wide)
                     target.set(cx - bw / 2, pill.top, cx + bw / 2, statusBottom + ui.dp(32f))
                     nk = w; sy = statusBottom; rb = ui.dp(18f)
@@ -385,7 +391,7 @@ class Island(
         val union = RectF(target)
         union.union(l.value, t.value, r.value, b.value)
         if (second != null || bubbleK.value > 0.01f) union.union(bubble)
-        place(union, kind != Kind.Hidden || hotspot())
+        place(union, (kind != Kind.Hidden && primary?.dropOnly() != true) || (kind == Kind.Hidden && hotspot()))
         kick()
     }
 
@@ -467,7 +473,7 @@ class Island(
         val a = contentA.value.coerceIn(0f, 1f)
         val s = shownScene
         if (a > 0.01f && s != null) when (shownKind) {
-            Kind.Compact -> {
+            Kind.Compact -> if (s.dropOnly()) s.drawRow(canvas, now, a) else {
                 zones(now)
                 s.drawCompact(canvas, zoneL, zoneR, a)
                 if (now.bottom > pill.bottom + 1f) {
