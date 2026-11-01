@@ -32,8 +32,8 @@
     <string name="restricted">Android 13 ke atas mengunci akses ini untuk aplikasi dari luar Play Store. Buka kuncinya di Info aplikasi › ⋮ › Izinkan setelan terbatas.</string>
     <string name="app_info">Info aplikasi</string>
     <string name="perm_access">Aksesibilitas</string>
-    <string name="perm_access_sub">Island bisa disentuh di area status bar. Tepi hanya membuka satu jendela dan tidak membaca isi layar.</string>
-    <string name="access_desc">Menaruh island Tepi di atas status bar supaya bisa disentuh. Tepi tidak membaca isi layar atau yang kamu ketik.</string>
+    <string name="perm_access_sub">Opsional. Island bisa disentuh di area status bar. Aplikasi bank menolak terbuka selama ini aktif, jadi Tepi mematikannya sendiri saat aplikasi bank dibuka.</string>
+    <string name="access_desc">Menaruh island Tepi di atas status bar supaya bisa disentuh. Tepi hanya tahu saat aplikasi bank dibuka, untuk mematikan dirinya. Tepi tidak membaca isi layar atau yang kamu ketik.</string>
     <string name="cd_music">Memutar %1$s oleh %2$s</string>
     <string name="reply">Balas</string>
     <string name="reply_to">Balas ke %1$s</string>
@@ -120,7 +120,7 @@
     <string name="share">Bagikan</string>
     <string name="reads_intro">Tepi tidak punya akun dan server. Data tetap di HP kecuali yang disebut di sini.</string>
     <string name="reads_listener">Membaca lagu yang diputar dan pesan masuk untuk ditampilkan di island. Tidak disimpan dan tidak dikirim.</string>
-    <string name="reads_access">Membuka satu jendela di atas status bar supaya island bisa disentuh. Tidak membaca isi layar.</string>
+    <string name="reads_access">Membuka satu jendela di atas status bar supaya island bisa disentuh. Hanya tahu saat aplikasi bank yang terdaftar dibuka, lalu mematikan dirinya. Tidak membaca isi layar.</string>
     <string name="reads_overlay">Menggambar island di atas aplikasi lain.</string>
     <string name="reads_lyrics">Mengirim judul dan artis lagu ke LRCLIB, lalu NetEase. Lirik disimpan di HP.</string>
     <string name="reads_shelf">Menyimpan salinan yang kamu bagikan ke Tepi, di penyimpanan aplikasi. Terhapus bersama aplikasi.</string>
@@ -334,4 +334,9 @@
     <string name="tr_downloading">Mengunduh model terjemahan…</string>
     <string name="lockscreen">Tampil di layar kunci</string>
     <string name="lockscreen_sub">Hanya musik, timer, dan ibadah. Catatan, rak, agenda, dan isi pesan tetap tersembunyi sampai HP dibuka.</string>
+    <string name="bank_mode">Mode bank</string>
+    <string name="bank_stepped">Tepi mematikan aksesibilitas supaya %1$s bisa dibuka. Nyalakan lagi dari Tepi setelah selesai.</string>
+    <string name="bank_stepped_any">Aksesibilitas mati, aplikasi bank bisa dibuka. Nyalakan lagi dari Tepi setelah selesai.</string>
+    <string name="perm_access_on">Membuka aplikasi bank akan mematikan ini. Untuk aplikasi lain, tahan island lalu pilih Mode bank.</string>
+    <string name="perm_access_paused">Mati karena aplikasi bank. Nyalakan lagi setelah selesai.</string>
 </resources>

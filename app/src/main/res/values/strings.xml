@@ -33,8 +33,8 @@
     <string name="restricted">Android 13 and later lock this access for apps installed outside the Play Store. Unlock it in App info › ⋮ › Allow restricted settings.</string>
     <string name="app_info">App info</string>
     <string name="perm_access">Accessibility</string>
-    <string name="perm_access_sub">Lets you tap the island where it overlaps the status bar. Tepi opens one window and reads nothing on screen.</string>
-    <string name="access_desc">Puts the Tepi island above the status bar so it can be tapped. Tepi does not read screen content or what you type.</string>
+    <string name="perm_access_sub">Optional. Lets you tap the island where it overlaps the status bar. Banking apps refuse to open while it\’s on, so Tepi turns it off when one opens.</string>
+    <string name="access_desc">Puts the Tepi island above the status bar so it can be tapped. Tepi only notices when a banking app opens, to switch itself off. It does not read screen content or what you type.</string>
     <string name="cd_music">Playing %1$s by %2$s</string>
     <string name="reply">Reply</string>
     <string name="reply_to">Reply to %1$s</string>
@@ -123,7 +123,7 @@
     <string name="share">Share</string>
     <string name="reads_intro">Tepi has no account and no server. Data stays on the phone except where listed.</string>
     <string name="reads_listener">Reads what is playing and incoming messages to show them on the island. Nothing is stored or sent.</string>
-    <string name="reads_access">Opens one window above the status bar so the island can be tapped. Reads no screen content.</string>
+    <string name="reads_access">Opens one window above the status bar so the island can be tapped. Hears only when a listed banking app opens, then switches itself off. Reads no screen content.</string>
     <string name="reads_overlay">Draws the island over other apps.</string>
     <string name="reads_lyrics">Sends the song title and artist to LRCLIB, then NetEase. Lyrics are cached on the phone.</string>
     <string name="reads_shelf">Keeps a copy of what you share to Tepi, in app storage. Deleted with the app.</string>
@@ -337,4 +337,9 @@
     <string name="tr_downloading">Downloading the translation model…</string>
     <string name="lockscreen">Show on the lock screen</string>
     <string name="lockscreen_sub">Music, timer, and prayer only. Notes, shelf, agenda, and message text stay hidden until unlocked.</string>
+    <string name="bank_mode">Bank mode</string>
+    <string name="bank_stepped">Tepi turned accessibility off so %1$s can open. Turn it on again from Tepi when you\’re done.</string>
+    <string name="bank_stepped_any">Accessibility is off, banking apps can open. Turn it on again from Tepi when you\’re done.</string>
+    <string name="perm_access_on">Opening a banking app turns this off. Hold the island and pick Bank mode for other apps.</string>
+    <string name="perm_access_paused">Off for a banking app. Turn it on again when you\’re done.</string>
 </resources>

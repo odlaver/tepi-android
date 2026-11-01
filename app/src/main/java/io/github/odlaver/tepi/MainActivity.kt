@@ -91,7 +91,7 @@ class MainActivity : Page() {
     private fun canDraw() = overlay() || a11y()
     private fun blocked() = canDraw() && access() && !Listener.connected && SystemClock.uptimeMillis() - resumedAt > 5000
     private fun running() = prefs.enabled && canDraw() && access() && Listener.connected
-    private fun state() = "${prefs.enabled}${overlay()}${access()}${a11y()}${Listener.connected}${blocked()}${Oem.batteryFree(this)}"
+    private fun state() = "${Access.paused(this)}${prefs.enabled}${overlay()}${access()}${a11y()}${Listener.connected}${blocked()}${Oem.batteryFree(this)}"
 
     override fun build() {
         hero()
@@ -168,7 +168,8 @@ class MainActivity : Page() {
         else button(getString(label)) { action() }
 
     private fun steps() {
-        val need = listOf(overlay(), access(), Oem.batteryFree(this), a11y()).count { !it } + if (Oem.hasAutostart && blocked()) 1 else 0
+        // Accessibility is optional
+        val need = listOf(overlay(), access(), Oem.batteryFree(this)).count { !it } + if (Oem.hasAutostart && blocked()) 1 else 0
         label(if (need == 0) getString(R.string.steps_done) else resources.getQuantityString(R.plurals.steps_left, need, need))
         val g = group()
         row(g, getString(R.string.perm_overlay), if (overlay()) null else getString(R.string.perm_overlay_sub), done(overlay(), R.string.grant) {
@@ -182,9 +183,12 @@ class MainActivity : Page() {
         }
         row(g, getString(R.string.battery), if (Oem.batteryFree(this)) null else getString(R.string.battery_sub),
             done(Oem.batteryFree(this), R.string.grant) { Oem.askBattery(this) }, Icon.Battery)
-        row(g, getString(R.string.perm_access), if (a11y()) null else getString(R.string.perm_access_sub), done(a11y(), R.string.turn_on) {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }, Icon.Hand)
+        val accessNote = when {
+            a11y() -> getString(R.string.perm_access_on)
+            Access.paused(this) -> getString(R.string.perm_access_paused)
+            else -> getString(R.string.perm_access_sub)
+        }
+        row(g, getString(R.string.perm_access), accessNote, done(a11y(), R.string.turn_on) { Access.openSettings(this) }, Icon.Hand)
         if (!a11y() && Build.VERSION.SDK_INT >= 33) restricted(g)
     }
 

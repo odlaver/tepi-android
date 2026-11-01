@@ -194,9 +194,11 @@ class Listener : NotificationListenerService() {
         isl.home.rows.add(TaskRow(isl, agenda, agendaTab))
         isl.home.rows.add(NoteRow(isl, notes) { open(Items::class.java, Items.NOTES) })
         isl.home.rows.add(ShelfRow(isl, shelf) { picked(it) })
+        isl.homeExtras.add { if (Access.paused(this)) Action(getString(R.string.perm_access), primary = true, icon = Icon.Hand) { Access.openSettings(this) } else null }
         isl.homeExtras.add { if (!timers.active) Action(getString(R.string.t_focus_n, 25), primary = true, icon = Icon.Timer) { timers.focus(25) } else null }
         isl.homeExtras.add { Action(getString(R.string.note_new), icon = Icon.Note, personal = true) { newNote() } }
         isl.menuExtras.add { Action(getString(R.string.t_timer), icon = Icon.Timer) { isl.expand(ts) } }
+        isl.menuExtras.add { Access.instance?.let { a -> Action(getString(R.string.bank_mode), icon = Icon.Shield) { a.stepAside(null) } } }
         isl.menuExtras.add { Action(getString(R.string.note_new), icon = Icon.Note, personal = true) { newNote() } }
     }
 
