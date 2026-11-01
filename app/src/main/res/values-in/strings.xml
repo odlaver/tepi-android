@@ -322,4 +322,5 @@
     <string name="st_ready">siap</string>
     <string name="music_idle">Tidak ada yang diputar</string>
     <string name="open_player">Buka pemutar</string>
+    <string name="tr_downloading">Mengunduh model terjemahan…</string>
 </resources>

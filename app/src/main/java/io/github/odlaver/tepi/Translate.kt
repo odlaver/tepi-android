@@ -57,10 +57,14 @@ class TranslateActivity : Activity() {
         val text = intent.getCharSequenceExtra(Intent.EXTRA_PROCESS_TEXT)?.toString()
             ?: intent.getStringExtra(Intent.EXTRA_TEXT) ?: run { finish(); return }
         Translator.run(this, text.take(5000), askDownload = { mb, go ->
-            AlertDialog.Builder(this)
+            // System dialog style, follows light and dark
+            AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_DayNight_Dialog_Alert)
                 .setTitle(R.string.tr_download)
                 .setMessage(getString(R.string.tr_download_sub, mb))
-                .setPositiveButton(R.string.tr_download_ok) { _, _ -> go() }
+                .setPositiveButton(R.string.tr_download_ok) { _, _ ->
+                    android.widget.Toast.makeText(this, R.string.tr_downloading, android.widget.Toast.LENGTH_LONG).show()
+                    go()
+                }
                 .setNegativeButton(R.string.cancel) { _, _ -> finish() }
                 .setOnCancelListener { finish() }
                 .show()
