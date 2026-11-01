@@ -58,7 +58,8 @@ class TranslateActivity : Activity() {
             ?: intent.getStringExtra(Intent.EXTRA_TEXT) ?: run { finish(); return }
         Translator.run(this, text.take(5000), askDownload = { mb, go ->
             // System dialog style, follows light and dark
-            AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_DayNight_Dialog_Alert)
+            AlertDialog.Builder(this, if (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES)
+                android.R.style.Theme_DeviceDefault_Dialog_Alert else android.R.style.Theme_DeviceDefault_Light_Dialog_Alert)
                 .setTitle(R.string.tr_download)
                 .setMessage(getString(R.string.tr_download_sub, mb))
                 .setPositiveButton(R.string.tr_download_ok) { _, _ ->
