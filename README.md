@@ -77,7 +77,7 @@ Setelah tersambung:
 - permintaan izin dari agen coding di laptop bisa dijawab dari HP, dengan sidik jari untuk Izinkan;
 - pesan masuk di HP ikut tampil di Tepi laptop;
 - kode verifikasi dari SMS, email, dan aplikasi bank siap disalin di laptop;
-- berkas bisa dikirim dua arah. Dari HP, pilih **Kirim ke laptop** di menu Bagikan.
+- berkas bisa dikirim dua arah. Dari HP, pilih **Kirim ke laptop** di menu Bagikan, ketuk **Pilih berkas** di Integrasi › Laptop, atau kirim dari Rak.
 
 ## Privasi
 
