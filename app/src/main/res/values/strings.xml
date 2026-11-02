@@ -264,7 +264,7 @@
     </plurals>
     <string name="laptop">Laptop</string>
     <string name="pc_title">Tepi on Windows</string>
-    <string name="pc_how">On the laptop: Tepi › Settings › Phone › Link a phone, then Make a code. Type the address and code shown there. Same Wi-Fi only.</string>
+    <string name="pc_how">On the laptop: Tepi › Settings › Phone › Link a phone, then Make a code. Scan the QR shown there, or type its address and code. Same Wi-Fi only.</string>
     <string name="send_to_laptop">Send to laptop</string>
     <string name="pc_sending">Sending to the laptop…</string>
     <string name="pc_sent">Sent to the laptop</string>
@@ -280,6 +280,9 @@
     <string name="pc_pair">Connect</string>
     <string name="pc_bad">Address needs a port; the code has 12 characters</string>
     <string name="pc_failed">Could not pair. Check the code, the Wi-Fi, and the laptop firewall.</string>
+    <string name="scan_qr">Scan QR</string>
+    <string name="qr_bad">This QR isn\'t a Tepi pairing code</string>
+    <string name="qr_unavailable">The scanner needs Google Play services</string>
     <string name="pc_connected">Connected to %1$s</string>
     <string name="pc_online">Reachable at %1$s</string>
     <string name="pc_offline">Not reachable at %1$s right now</string>
