@@ -142,6 +142,23 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
         return true
     }
 
+    // Several laptop addresses: first that answers
+    fun pairAny(hosts: List<String>, code: String): Boolean = hosts.any { pair(it, code) }
+
+    // tepi://pair?a=ip:port,ip:port&c=CODE, private addresses only
+    fun parseLink(raw: String?): Pair<List<String>, String>? {
+        if (raw == null) return null
+        val uri = try { Uri.parse(raw.trim()) } catch (_: Exception) { return null }
+        if (uri.scheme != "tepi" || uri.host != "pair") return null
+        val code = uri.getQueryParameter("c")?.trim()?.uppercase() ?: return null
+        if (!Regex("^[A-Z0-9]{4}-?[A-Z0-9]{4}-?[A-Z0-9]{4}$").matches(code)) return null
+        val hosts = (uri.getQueryParameter("a") ?: "").split(',').map { it.trim() }.filter { h ->
+            val port = h.substringAfter(':', "").toIntOrNull()
+            isLan(h.substringBefore(':')) && port != null && port in 1..65535
+        }.take(3)
+        return if (hosts.isEmpty()) null else hosts to code
+    }
+
     fun forget() {
         stop()
         vault.put("pc.key", null)

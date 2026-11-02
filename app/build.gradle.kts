@@ -58,8 +58,9 @@ kotlin {
     }
 }
 
-// On-device translation only
+// On-device translation; QR scanner runs inside Play services
 dependencies {
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.mlkit:language-id:17.0.6")
+    implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 }

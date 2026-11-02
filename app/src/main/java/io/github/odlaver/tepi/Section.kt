@@ -219,13 +219,26 @@ class Section : Page() {
         val host = field(getString(R.string.pc_address))
         val code = field(getString(R.string.pc_code))
         code.inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS
-        form(g, host, code, button(getString(R.string.pc_pair)) {
+        // Opened from a tepi://pair link: fill, never connect alone
+        val fill = { raw: String? ->
+            val link = pc.parseLink(raw)
+            if (link == null) toast(getString(R.string.qr_bad))
+            else { host.setText(link.first[0]); code.setText(link.second); qrHosts = link.first }
+        }
+        intent.getStringExtra(LINK)?.let { intent.removeExtra(LINK); fill(it) }
+        val pairBtn = button(getString(R.string.pc_pair)) {
             val h = host.text.toString().trim()
             val c = code.text.toString().trim()
             if (!h.contains(':') || c.replace("-", "").length != 12) { toast(getString(R.string.pc_bad)); return@button }
-            work({ pc.pair(h, c) }) { ok -> if (ok) rebuild() else toast(getString(R.string.pc_failed)) }
-        })
+            val hosts = if (qrHosts.firstOrNull() == h) qrHosts else listOf(h)
+            work({ pc.pairAny(hosts, c) }) { ok -> if (ok) rebuild() else toast(getString(R.string.pc_failed)) }
+        }
+        if (Scan.available(this)) form(g, button(getString(R.string.scan_qr), false, Icon.Camera) { Scan.qr(this, fill) }, host, code, pairBtn)
+        else form(g, host, code, pairBtn)
     }
+
+    // Laptop addresses from the last QR
+    private var qrHosts: List<String> = emptyList()
 
     private fun about() {
         header(getString(R.string.section_about))
@@ -255,6 +268,7 @@ class Section : Page() {
 
     companion object {
         const val MODE = "mode"
+        const val LINK = "link"
         const val ISLAND = "island"
         const val ACTIVITIES = "activities"
         const val PRODUCTIVITY = "productivity"

@@ -261,7 +261,7 @@
     </plurals>
     <string name="laptop">Laptop</string>
     <string name="pc_title">Tepi di Windows</string>
-    <string name="pc_how">Di laptop: Tepi › Pengaturan › HP › Hubungkan HP, lalu Buat kode. Ketik alamat dan kode yang muncul di sana. Harus satu Wi-Fi.</string>
+    <string name="pc_how">Di laptop: Tepi › Pengaturan › HP › Hubungkan HP, lalu Buat kode. Pindai QR yang muncul di sana, atau ketik alamat dan kodenya. Harus satu Wi-Fi.</string>
     <string name="send_to_laptop">Kirim ke laptop</string>
     <string name="pc_sending">Mengirim ke laptop…</string>
     <string name="pc_sent">Terkirim ke laptop</string>
@@ -277,6 +277,9 @@
     <string name="pc_pair">Sambungkan</string>
     <string name="pc_bad">Alamat butuh port; kode terdiri dari 12 karakter</string>
     <string name="pc_failed">Gagal tersambung. Cek kode, Wi-Fi, dan firewall laptop.</string>
+    <string name="scan_qr">Pindai QR</string>
+    <string name="qr_bad">QR ini bukan kode pasangan Tepi</string>
+    <string name="qr_unavailable">Pemindai butuh Google Play services</string>
     <string name="pc_connected">Tersambung ke %1$s</string>
     <string name="pc_online">Terjangkau di %1$s</string>
     <string name="pc_offline">Belum terjangkau di %1$s</string>

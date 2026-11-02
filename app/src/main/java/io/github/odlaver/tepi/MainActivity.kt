@@ -59,6 +59,24 @@ class MainActivity : Page() {
     private var resumedAt = 0L
     private var lastState = ""
 
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        if (savedInstanceState == null) openLink(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        openLink(intent)
+    }
+
+    // tepi://pair goes to the laptop form, filled
+    private fun openLink(i: Intent?) {
+        val data = i?.data ?: return
+        if (data.scheme != "tepi") return
+        i.data = null
+        startActivity(Intent(this, Section::class.java).putExtra(Section.MODE, Section.CONNECT).putExtra(Section.LINK, data.toString()))
+    }
+
     override fun onResume() {
         super.onResume()
         resumedAt = SystemClock.uptimeMillis()
