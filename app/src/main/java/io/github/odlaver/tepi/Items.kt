@@ -46,6 +46,10 @@ class Items : Page() {
                 startActivity(android.content.Intent(this, TranslateActivity::class.java).putExtra(android.content.Intent.EXTRA_TEXT, it.text))
             })
             if (!it.isText) acts.add(Triple(getString(R.string.open), Icon.Open) { try { startActivity(shelf.openIntent(it)) } catch (_: Exception) { } })
+            if (!it.isText && Listener.instance?.pc?.linked == true) acts.add(Triple(getString(R.string.send_to_laptop), Icon.Laptop) {
+                val f = shelf.file(it)
+                if (f != null) SendActivity.send(this, listOf(Triple(it.name ?: f.name, f.length(), f.inputStream())))
+            })
             acts.add(Triple(getString(R.string.share), Icon.Share) { startActivity(shelf.shareIntent(it)) })
             acts.add(Triple(getString(R.string.delete), Icon.Trash) { shelf.remove(it); rebuild() })
             actions(box, acts)

@@ -265,6 +265,9 @@
     <string name="laptop">Laptop</string>
     <string name="pc_title">Tepi on Windows</string>
     <string name="pc_how">On the laptop: Tepi › Settings › Phone › Link a phone, then Make a code. Scan the QR shown there, or type its address and code. Same Wi-Fi only.</string>
+    <string name="pc_send_files">Send files to laptop</string>
+    <string name="pc_send_files_sub">Pick files on this phone. They land in Downloads\\Tepi and the Shelf on the laptop.</string>
+    <string name="pick_files">Pick files</string>
     <string name="send_to_laptop">Send to laptop</string>
     <string name="pc_sending">Sending to the laptop…</string>
     <string name="pc_sent">Sent to the laptop</string>

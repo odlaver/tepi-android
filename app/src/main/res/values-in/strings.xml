@@ -262,6 +262,9 @@
     <string name="laptop">Laptop</string>
     <string name="pc_title">Tepi di Windows</string>
     <string name="pc_how">Di laptop: Tepi › Pengaturan › HP › Hubungkan HP, lalu Buat kode. Pindai QR yang muncul di sana, atau ketik alamat dan kodenya. Harus satu Wi-Fi.</string>
+    <string name="pc_send_files">Kirim berkas ke laptop</string>
+    <string name="pc_send_files_sub">Pilih berkas di HP ini. Masuk ke Downloads\\Tepi dan Rak di laptop.</string>
+    <string name="pick_files">Pilih berkas</string>
     <string name="send_to_laptop">Kirim ke laptop</string>
     <string name="pc_sending">Mengirim ke laptop…</string>
     <string name="pc_sent">Terkirim ke laptop</string>

@@ -211,6 +211,8 @@ class Section : Page() {
         if (pc.paired) {
             row(g, getString(R.string.pc_connected, pc.name.ifEmpty { pc.host }), getString(if (pc.online) R.string.pc_online else R.string.pc_offline, pc.host),
                 button(getString(R.string.disconnect), false) { pc.forget(); rebuild() }, Icon.Laptop)
+            row(g, getString(R.string.pc_send_files), getString(R.string.pc_send_files_sub),
+                button(getString(R.string.pick_files), false) { startActivity(Intent(this, PickSendActivity::class.java)) }, Icon.Share)
             toggle(g, getString(R.string.pc_notifs), getString(R.string.pc_notifs_sub), pc.sendNotifs, icon = Icon.Chat) { pc.sendNotifs = it }
             toggle(g, getString(R.string.pc_otp), getString(R.string.pc_otp_sub), pc.sendOtp, icon = Icon.Shield) { pc.sendOtp = it }
             return

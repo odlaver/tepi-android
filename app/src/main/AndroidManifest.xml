@@ -104,6 +104,12 @@
         </activity>
 
         <activity
+            android:name=".PickSendActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:theme="@style/Tepi.Hop" />
+
+        <activity
             android:name=".ShareActivity"
             android:excludeFromRecents="true"
             android:exported="true"

@@ -98,6 +98,9 @@ class Shelf(private val context: Context) {
         return Intent.createChooser(send, null)
     }
 
+    // Stored copy of a file item
+    fun file(item: ShelfItem): File? = item.file?.let { File(dir, it) }?.takeIf { it.exists() }
+
     private fun uri(item: ShelfItem) = Uri.parse("content://${context.packageName}.shelf/${item.file}")
 
     private fun save(list: List<ShelfItem>) {
