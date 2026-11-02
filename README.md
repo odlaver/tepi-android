@@ -71,7 +71,7 @@ Android tidak mengizinkan aplikasi menyalakan aksesibilitasnya sendiri. Setelah 
 
 ## Sambungan ke laptop
 
-Butuh Tepi untuk Windows yang punya menu **HP**. Di laptop: Tepi › Pengaturan › HP › Hubungkan HP, lalu Buat kode. Di HP: Integrasi › Laptop, ketik alamat dan kode 12 karakter yang muncul. Laptop dan HP harus satu Wi-Fi, dan firewall Windows perlu mengizinkan Tepi di jaringan privat.
+Butuh Tepi untuk Windows yang punya menu **HP**. Di laptop: Tepi › Pengaturan › HP › Hubungkan HP, lalu Buat kode. Di HP: Integrasi › Laptop › **Pindai QR**, arahkan ke kode QR di laptop, lalu Sambungkan. QR juga bisa dipindai dari aplikasi kamera; tanpa Google Play services, ketik alamat dan kode 12 karakter yang muncul. Laptop dan HP harus satu Wi-Fi, dan firewall Windows perlu mengizinkan Tepi di jaringan privat.
 
 Setelah tersambung:
 - permintaan izin dari agen coding di laptop bisa dijawab dari HP, dengan sidik jari untuk Izinkan;
