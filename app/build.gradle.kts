@@ -13,8 +13,8 @@ android {
         applicationId = "io.github.odlaver.tepi"
         minSdk = 29
         targetSdk = 36
-        versionCode = 25
-        versionName = "2.5.0"
+        versionCode = 26
+        versionName = "2.5.1"
         // Modern phones only; keeps ML Kit's native code small
         ndk { abiFilters += listOf("arm64-v8a") }
     }
