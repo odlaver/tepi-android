@@ -144,9 +144,9 @@ class Listener : NotificationListenerService() {
         val display = getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY) ?: return
         // Accessibility window sits above the status bar
         val type = if (access != null) WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY else WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        val ctx = access ?: if (Build.VERSION.SDK_INT >= 30) createWindowContext(display, type, null) else this
+        val ctx = access ?: if (Build.VERSION.SDK_INT >= 31) createWindowContext(display, type, null) else this
         val probe = if (access != null && Settings.canDrawOverlays(this)) {
-            if (Build.VERSION.SDK_INT >= 30) createWindowContext(display, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null) else this
+            if (Build.VERSION.SDK_INT >= 31) createWindowContext(display, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null) else this
         } else null
         island = Island(ctx, probe, display, type, m, prefs, lyrics).also {
             try {

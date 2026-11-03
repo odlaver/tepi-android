@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
 import android.graphics.drawable.RippleDrawable
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -39,15 +40,20 @@ abstract class Page : Activity() {
         paper = getColor(R.color.bg)
         sub = withAlpha(ink, 158)
         fill = withAlpha(ink, if (Color.luminance(paper) > 0.5f) 14 else 22)
-        window.setDecorFitsSystemWindows(false)
+        // Edge-to-edge needs Android 11
+        if (Build.VERSION.SDK_INT >= 30) window.setDecorFitsSystemWindows(false)
         col = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dpi(24f), dpi(16f), dpi(24f), dpi(32f))
         }
         val scroll = ScrollView(this).apply { addView(col) }
         scroll.setOnApplyWindowInsetsListener { v, insets ->
-            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            if (Build.VERSION.SDK_INT >= 30) {
+                val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            } else {
+                v.setPadding(insets.systemWindowInsetLeft, insets.systemWindowInsetTop, insets.systemWindowInsetRight, insets.systemWindowInsetBottom)
+            }
             insets
         }
         setContentView(scroll)
