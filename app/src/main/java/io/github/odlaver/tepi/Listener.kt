@@ -46,13 +46,15 @@ class Listener : NotificationListenerService() {
     private var media: Media? = null
     private lateinit var prefs: Prefs
     private lateinit var lyrics: Lyrics
-    private val recent = HashMap<String, Long>()
-    private val sentPc = HashMap<String, Long>()
+    private var wasLow = false
+    private val shown = Dedupe()
+    private val sentPc = Dedupe()
     private val codes = HashMap<String, Long>()
     private val forwarded = HashSet<String>()
     lateinit var timers: Timers
     lateinit var reminders: Reminders
     lateinit var notes: Notes
+    private lateinit var suruh: Suruh
     lateinit var shelf: Shelf
     private var alerts: AlertScene? = null
     lateinit var live: Live
@@ -67,6 +69,13 @@ class Listener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
+        Power.start(this) {
+            // Only a real flip reloads
+            val now = Power.low(prefs)
+            if (now != wasLow) { wasLow = now; island?.prefsChanged() }
+            if (Power.screenOn) { reminders.wake(); checkUpdate() }
+        }
+        wasLow = Power.low(prefs)
         // Leftovers from the old HyperOS island mode
         try { getSystemService(NotificationManager::class.java).cancelAll() } catch (_: Exception) { }
         lyrics = Lyrics(java.io.File(cacheDir, "lyrics"))
@@ -74,6 +83,8 @@ class Listener : NotificationListenerService() {
         shelf = Shelf(this)
         timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
+        reminders.due = { text, at -> onceDue(text, at) }
+        suruh = Suruh(this, timers, notes, reminders)
         agenda = Agenda(this, prefs, changed = { island?.refresh() }, classSoon = { classSoon(it) })
         pc = Pc(this, agenda.vault, prefs) { island?.refresh() }
         pc.onFile = { name, uri -> fromLaptop(name, uri) }
@@ -87,8 +98,15 @@ class Listener : NotificationListenerService() {
     override fun onListenerConnected() {
         instance = this
         connected = true
-        media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.start() }
+        media = Media(this, ComponentName(this, Listener::class.java)) { island?.mediaChanged() }.also { it.small = { Power.low(prefs) }; it.start() }
         applyEnabled()
+        checkUpdate()
+    }
+
+    // New version: island card plus notification
+    private fun checkUpdate() = UpdateCheck.maybe(this, prefs) { rel ->
+        ensureIsland()
+        island?.show(Message("tepi.update", getString(R.string.update_found, rel.version), getString(R.string.update_tap), appIcon(packageName), UpdateCheck.open(this, rel)))
     }
 
     // Start or pause everything after the master switch
@@ -118,6 +136,7 @@ class Listener : NotificationListenerService() {
     }
 
     override fun onDestroy() {
+        Power.stop(this)
         teardown()
         super.onDestroy()
     }
@@ -181,6 +200,7 @@ class Listener : NotificationListenerService() {
         isl.register(NavScene(isl, live))
         isl.register(ClockScene(isl, live))
         isl.register(ProgressScene(isl, live))
+        isl.register(io.github.odlaver.tepi.scene.PromotedScene(isl, live))
         isl.home.rows.add(0, TimerRow(isl, timers, ts))
         isl.home.rows.add(1, ClassRow(isl, agenda))
         isl.home.rows.add(2, PrayerRow(isl, reminders))
@@ -200,6 +220,23 @@ class Listener : NotificationListenerService() {
         isl.menuExtras.add { Action(getString(R.string.t_timer), icon = Icon.Timer) { isl.expand(ts) } }
         isl.menuExtras.add { Access.instance?.let { a -> Action(getString(R.string.bank_mode), icon = Icon.Shield) { a.stepAside(null) } } }
         isl.menuExtras.add { Action(getString(R.string.note_new), icon = Icon.Note, personal = true) { newNote() } }
+        isl.menuExtras.add { Action(getString(R.string.suruh), icon = Icon.Spark) { ask() } }
+    }
+
+    // Suruh Tepi: typed, offline
+    private fun ask() {
+        island?.input(getString(R.string.suruh_hint)) { text ->
+            if (text.isBlank()) return@input
+            val done = suruh.run(text)
+            if (done != null) alert(Alert("suruh", done, "", Glyph.Check, ms = 4000))
+            else alert(Alert("suruh", getString(R.string.suruh_unknown), getString(R.string.suruh_try), Glyph.Bell, ms = 6000))
+        }
+    }
+
+    private fun onceDue(text: String, at: Long) {
+        Bell.ring(this)
+        val time = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT).format(java.util.Date(at))
+        alert(Alert("once", text, time, Glyph.Bell, listOf(Action(getString(R.string.close), primary = true, icon = Icon.Check) { }), 20_000))
     }
 
     private fun section(mode: String) {
@@ -283,13 +320,10 @@ class Listener : NotificationListenerService() {
             val rank = Ranking()
             if (rankingMap.getRanking(sbn.key, rank) && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
         }
+        if (mine(n)) return
         val (title, text) = chat(n)
         if (title.isEmpty() && text.isEmpty()) return
-        val sig = sbn.key + "|" + title + "|" + text
-        val now = SystemClock.uptimeMillis()
-        sentPc.entries.removeAll { now - it.value > 60_000 }
-        if (sentPc.containsKey(sig)) return
-        sentPc[sig] = now
+        if (!sentPc.fresh(sbn, title, text, conv(n, title))) return
         val app = appLabel(sbn.packageName)
         if (forwarded.size > 500) forwarded.clear()
         forwarded.add(sbn.key)
@@ -333,6 +367,9 @@ class Listener : NotificationListenerService() {
         ensureIsland()
     }
 
+    // Calibration page shows the guide
+    fun calibrate(on: Boolean) { island?.calibrating = on }
+
     fun prefsChanged() {
         island?.prefsChanged()
     }
@@ -351,6 +388,7 @@ class Listener : NotificationListenerService() {
             "focus" -> timers.focus(25)
             "timer" -> timerScene?.let { isl.expand(it) }
             "note" -> newNote()
+            "ask" -> ask()
             else -> return false
         }
         return true
@@ -369,30 +407,28 @@ class Listener : NotificationListenerService() {
         val n = sbn.notification
         if (sbn.packageName == packageName || sbn.isOngoing || !isMessage(n)) return
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
-        if (rankingMap != null) {
-            val rank = Ranking()
-            if (rankingMap.getRanking(sbn.key, rank) && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
-        }
+        val rank = rankingMap?.let { m -> Ranking().takeIf { m.getRanking(sbn.key, it) } }
+        if (rank != null && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
+        // Our own reply echoed back
+        if (mine(n)) return
         val (title, text) = chat(n)
         if (title.isEmpty() && text.isEmpty()) return
-
-        // Same text again: an update, not news
-        // Same app, chat, and text: one card, whatever the key
-        val sig = sbn.packageName + "|" + title + "|" + text
-        val nowMs = SystemClock.uptimeMillis()
-        recent.entries.removeAll { nowMs - it.value > 60_000 }
-        if (recent.containsKey(sig)) return
-        recent[sig] = nowMs
+        // Repeats, updates, history: one alert
+        if (!shown.fresh(sbn, title, text, conv(n, title))) return
 
         val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+        Banners.note(prefs, sbn.packageName, rank)
+        // Android pops it up, or Do Not Disturb holds it: stay small
+        val dnd = rank != null && !rank.matchesInterruptionFilter()
+        val quiet = dnd || (Banners.systemOwns(prefs) && Banners.systemPeeks(rank, locked))
         val reveal = prefs.notifContent && !locked
         val app = appLabel(sbn.packageName)
         val badge = appIcon(sbn.packageName)
         val icon = n.getLargeIcon()?.loadDrawable(this)?.let { bitmap(it) } ?: badge
         val reply = if (reveal) n.actions?.firstOrNull { a -> a.remoteInputs?.any { it.allowFreeFormInput } == true } else null
         val others = if (reveal) n.actions?.filter { it !== reply && it.remoteInputs.isNullOrEmpty() && it.actionIntent != null }?.take(2).orEmpty() else emptyList()
-        val built = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others, app, badge, sbn.postTime)
-        else Message(sbn.key, app, getString(R.string.new_message), badge, n.contentIntent, app = app, appIcon = badge, at = sbn.postTime)
+        val built = if (reveal) Message(sbn.key, title.ifEmpty { app }, text, icon, n.contentIntent, reply, others, app, badge, sbn.postTime, quiet)
+        else Message(sbn.key, app, getString(R.string.new_message), badge, n.contentIntent, app = app, appIcon = badge, at = sbn.postTime, quiet = quiet)
         isl.show(built)
     }
 
@@ -403,6 +439,21 @@ class Listener : NotificationListenerService() {
         return n.actions?.any { it.remoteInputs?.isNotEmpty() == true } == true
     }
 
+    // Last message sent by the user
+    @Suppress("DEPRECATION")
+    private fun mine(n: Notification): Boolean {
+        val last = lastBundle(n) ?: return false
+        val sender = senderOf(last)
+        val person = if (Build.VERSION.SDK_INT >= 28) n.extras.getParcelable<android.app.Person>(Notification.EXTRA_MESSAGING_PERSON)?.name else null
+        val self = (person ?: n.extras.getCharSequence(Notification.EXTRA_SELF_DISPLAY_NAME))?.toString()?.trim()
+        if (self.isNullOrEmpty()) return false
+        return sender == null || sender == self
+    }
+
+    // Chat identity for history checks
+    private fun conv(n: Notification, title: String): String =
+        n.extras.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim()?.takeIf { it.isNotEmpty() } ?: title
+
     // MessagingStyle: newest message wins
     // Chat apps put the account in EXTRA_TITLE; the sender is in the message
     private fun chat(n: Notification): Pair<String, String> {
@@ -410,7 +461,8 @@ class Listener : NotificationListenerService() {
         val conv = x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE)?.toString()?.trim()?.takeIf { it.isNotEmpty() }
         val last = lastBundle(n)
         val sender = last?.let { senderOf(it) }
-        val group = x.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION) && conv != null
+        // Android 8 has no group flag
+        val group = (if (Build.VERSION.SDK_INT >= 28) x.getBoolean(Notification.EXTRA_IS_GROUP_CONVERSATION) else x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) != null) && conv != null
         val body = last?.getCharSequence("text")?.toString()?.trim()?.takeIf { it.isNotEmpty() }
             ?: x.getCharSequence(Notification.EXTRA_TEXT)?.toString()?.trim().orEmpty()
         val title = (if (group) conv else sender ?: conv ?: x.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim()).orEmpty()
@@ -424,8 +476,8 @@ class Listener : NotificationListenerService() {
     // Person name first, legacy sender string second
     @Suppress("DEPRECATION")
     private fun senderOf(b: android.os.Bundle): String? {
-        val person = b.getParcelable<android.app.Person>("sender_person")
-        return (person?.name ?: b.getCharSequence("sender"))?.toString()?.trim()?.takeIf { it.isNotEmpty() }
+        val person = if (Build.VERSION.SDK_INT >= 28) b.getParcelable<android.app.Person>("sender_person")?.name else null
+        return (person ?: b.getCharSequence("sender"))?.toString()?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     private fun appLabel(pkg: String): String = try {
@@ -469,7 +521,12 @@ class Listener : NotificationListenerService() {
         var connected = false
             private set
 
-        fun hasAccess(context: Context): Boolean =
-            context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(ComponentName(context, Listener::class.java))
+        fun hasAccess(context: Context): Boolean {
+            val me = ComponentName(context, Listener::class.java)
+            if (Build.VERSION.SDK_INT >= 27) return context.getSystemService(NotificationManager::class.java).isNotificationListenerAccessGranted(me)
+            // Android 8.0: read the setting
+            val list = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners").orEmpty()
+            return list.split(':').any { ComponentName.unflattenFromString(it) == me }
+        }
     }
 }

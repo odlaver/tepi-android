@@ -201,7 +201,9 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
             if (r == null) {
                 fails++
                 if (online) { online = false; main.post { changed() } }
-                try { Thread.sleep(if (fails < 3) 3000L else 15000L) } catch (_: InterruptedException) { break }
+                // Slower retries when saving power
+                val wait = when { fails < 3 -> 3000L; Power.low(prefs) || !Power.screenOn -> 60_000L; else -> 15_000L }
+                try { Thread.sleep(wait) } catch (_: InterruptedException) { break }
                 continue
             }
             // Back in reach: battery again
@@ -296,10 +298,36 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
         } catch (_: Exception) { return false }
     }
 
+    // Chunks into a stream; true when whole
+    private fun fetch(k: ByteArray, id: Int, size: Long, os: java.io.OutputStream): Boolean {
+        var off = 0L
+        while (true) {
+            var r: JSONObject? = null
+            for (attempt in 0 until 3) { r = call(k, host, "/phone/get", JSONObject().put("id", id).put("offset", off), 20000); if (r != null) break }
+            if (r == null || !r.optBoolean("ok")) return false
+            val data = Base64.decode(r.optString("data"), Base64.NO_WRAP)
+            os.write(data)
+            off += data.size
+            if (r.optBoolean("done")) return off == size
+        }
+    }
+
+    // Android 8 and 9: into the shelf
+    private fun pullOld(k: ByteArray, id: Int, name: String, size: Long) {
+        val dir = java.io.File(context.cacheDir, "in").apply { mkdirs() }
+        val tmp = java.io.File(dir, name.ifEmpty { "berkas" }.replace('/', '_'))
+        val ok = try { tmp.outputStream().use { fetch(k, id, size, it) } } catch (_: Exception) { false }
+        val shelf = Shelf(context)
+        val uri = if (ok && shelf.addFile(Uri.fromFile(tmp))) shelf.all().maxByOrNull { it.id }?.let { shelf.uriOf(it) } else null
+        tmp.delete()
+        main.post { onFile?.invoke(name, uri) }
+    }
+
     // Laptop to phone: into Download/Tepi
     private fun pull(id: Int, name: String, size: Long) {
         val k = key() ?: return
         if (size > MAX) return
+        if (Build.VERSION.SDK_INT < 29) { pullOld(k, id, name, size); return }
         val values = ContentValues().apply {
             put(MediaStore.Downloads.DISPLAY_NAME, name.ifEmpty { "berkas" })
             put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/Tepi")
@@ -310,18 +338,7 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
         if (uri == null) { main.post { onFile?.invoke(name, null) }; return }
         var ok = false
         try {
-            res.openOutputStream(uri)?.use { os ->
-                var off = 0L
-                while (true) {
-                    var r: JSONObject? = null
-                    for (attempt in 0 until 3) { r = call(k, host, "/phone/get", JSONObject().put("id", id).put("offset", off), 20000); if (r != null) break }
-                    if (r == null || !r.optBoolean("ok")) break
-                    val data = Base64.decode(r.optString("data"), Base64.NO_WRAP)
-                    os.write(data)
-                    off += data.size
-                    if (r.optBoolean("done")) { ok = off == size; break }
-                }
-            }
+            res.openOutputStream(uri)?.use { os -> ok = fetch(k, id, size, os) }
         } catch (_: Exception) { ok = false }
         if (ok) {
             res.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)

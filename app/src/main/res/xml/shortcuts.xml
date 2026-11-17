@@ -33,4 +33,15 @@
             android:targetClass="io.github.odlaver.tepi.Open"
             android:targetPackage="io.github.odlaver.tepi" />
     </shortcut>
+    <shortcut
+        android:enabled="true"
+        android:icon="@drawable/ic_mark"
+        android:shortcutId="ask"
+        android:shortcutShortLabel="@string/suruh">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="tepi://ask"
+            android:targetClass="io.github.odlaver.tepi.Open"
+            android:targetPackage="io.github.odlaver.tepi" />
+    </shortcut>
 </shortcuts>

@@ -18,6 +18,14 @@ import java.util.Locale
 
 // On-device translation; models download once, text never leaves
 object Translator {
+    fun available(context: Context) = true
+
+    // Shelf and other entry points
+    fun offer(context: Context, text: String): Boolean {
+        context.startActivity(Intent(context, TranslateActivity::class.java).putExtra(Intent.EXTRA_TEXT, text).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return true
+    }
+
     fun target(): String {
         val lang = Locale.getDefault().language.let { if (it == "in") "id" else it }
         return TranslateLanguage.fromLanguageTag(lang) ?: TranslateLanguage.ENGLISH

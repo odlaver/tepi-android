@@ -3,16 +3,25 @@
 
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
-    <!-- App list for the notification filter -->
+    <!-- App list for the notification filter; translator for Lite -->
     <queries>
         <intent>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.TRANSLATE" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT" />
+            <data android:mimeType="text/plain" />
+        </intent>
+        <package android:name="com.google.android.apps.translate" />
     </queries>
 
     <application
@@ -48,21 +57,6 @@
             android:exported="false" />
 
         <activity
-            android:name=".TranslateActivity"
-            android:excludeFromRecents="true"
-            android:exported="true"
-            android:label="@string/translate_with_tepi"
-            android:noHistory="true"
-            android:taskAffinity=""
-            android:theme="@style/Tepi.Hop">
-            <intent-filter>
-                <action android:name="android.intent.action.PROCESS_TEXT" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-        </activity>
-
-        <activity
             android:name=".Confirm"
             android:excludeFromRecents="true"
             android:exported="false"
@@ -75,8 +69,21 @@
             android:exported="false" />
 
         <activity
+            android:name=".BannerApps"
+            android:exported="false" />
+
+        <activity
             android:name=".Section"
             android:exported="false" />
+
+        <activity
+            android:name=".Pane"
+            android:exported="false" />
+
+        <activity
+            android:name=".Tour"
+            android:exported="false"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar" />
 
         <activity
             android:name=".Reads"
@@ -159,6 +166,17 @@
             <meta-data
                 android:name="android.service.quicksettings.TOGGLEABLE_TILE"
                 android:value="true" />
+        </service>
+
+        <service
+            android:name=".AskTile"
+            android:exported="true"
+            android:icon="@drawable/ic_mark"
+            android:label="@string/suruh"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
         </service>
 
         <service

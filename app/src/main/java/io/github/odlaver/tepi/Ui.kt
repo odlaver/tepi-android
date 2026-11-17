@@ -34,20 +34,52 @@ class Ui(context: Context) {
     // Island frame
     val edge = s16
     val pad = s16
-    val panelMax = dp(380f)
-    val radiusPanel = dp(24f)
+    var panelMax = dp(380f)
+    var radiusPanel = dp(24f)
     val radiusRow = dp(14f)
     val radiusButton = dp(12f)
     val btnH = dp(36f)
     val iconS = dp(18f)
 
     // Tone.Dark from Tepi Windows
-    val ink = Color.rgb(245, 245, 247)
-    val sub = Color.argb(158, 245, 245, 247)
-    val faint = Color.argb(92, 245, 245, 247)
-    val fill = Color.argb(28, 255, 255, 255)
-    val fillStrong = Color.argb(46, 255, 255, 255)
-    val line = Color.argb(23, 255, 255, 255)
+    var ink = Color.rgb(245, 245, 247)
+    var sub = Color.argb(158, 245, 245, 247)
+    var faint = Color.argb(92, 245, 245, 247)
+    var fill = Color.argb(28, 255, 255, 255)
+    var fillStrong = Color.argb(46, 255, 255, 255)
+    var line = Color.argb(23, 255, 255, 255)
+
+    // Island body and highlight colour
+    var surface = Color.BLACK
+    var accent = ink
+    var dark = true
+        private set
+
+    // Cover in play, for the cover accent
+    var coverArt: Bitmap? = null
+
+    // Most vivid cover colour, readable on surface
+    fun coverAccent(): Int? {
+        val art = coverArt ?: return null
+        if (art.isRecycled) return null
+        val small = try { Bitmap.createScaledBitmap(art, 16, 16, true) } catch (_: Exception) { return null }
+        val hsv = FloatArray(3)
+        var best = 0f
+        var pick: Int? = null
+        for (y in 0 until 16) for (x in 0 until 16) {
+            val px = small.getPixel(x, y)
+            Color.colorToHSV(px, hsv)
+            val score = hsv[1] * (1f - kotlin.math.abs(hsv[2] - 0.7f))
+            if (score > best) { best = score; pick = px }
+        }
+        if (small !== art) small.recycle()
+        val c = pick ?: return null
+        if (best < 0.12f) return null
+        Color.colorToHSV(c, hsv)
+        hsv[1] = hsv[1].coerceAtMost(0.75f)
+        hsv[2] = if (dark) hsv[2].coerceAtLeast(0.85f) else hsv[2].coerceAtMost(0.5f)
+        return Color.HSVToColor(hsv)
+    }
 
     val title = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(14f); typeface = Typeface.DEFAULT_BOLD }
     val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = sub; textSize = sp(12f) }
@@ -66,6 +98,27 @@ class Ui(context: Context) {
     private val shaderM = Matrix()
     private val glyph = Path()
     private val tmp = RectF()
+
+    // Recolour for theme and accent
+    fun restyle(dark: Boolean, base: Int, accent: Int, panelWidthDp: Int, radiusDp: Int) {
+        this.dark = dark
+        val t = if (dark) Color.rgb(245, 245, 247) else Color.rgb(20, 20, 22)
+        val f = if (dark) Color.WHITE else Color.BLACK
+        ink = t
+        sub = Color.argb(if (dark) 158 else 170, Color.red(t), Color.green(t), Color.blue(t))
+        faint = Color.argb(if (dark) 92 else 110, Color.red(t), Color.green(t), Color.blue(t))
+        fill = Color.argb(if (dark) 28 else 20, Color.red(f), Color.green(f), Color.blue(f))
+        fillStrong = Color.argb(if (dark) 46 else 34, Color.red(f), Color.green(f), Color.blue(f))
+        line = Color.argb(if (dark) 23 else 26, Color.red(f), Color.green(f), Color.blue(f))
+        surface = base
+        this.accent = accent
+        for (p in arrayOf(title, bodyInk, label, compact, lyric, big, heading)) p.color = ink
+        body.color = sub
+        small.color = faint
+        labelDark.color = surface
+        panelMax = dp(panelWidthDp.toFloat())
+        radiusPanel = dp(radiusDp.toFloat())
+    }
 
     fun alpha(color: Int, a: Float) = Color.argb((Color.alpha(color) * a).toInt().coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))
 
@@ -127,7 +180,7 @@ class Ui(context: Context) {
     fun button(c: Canvas, r: RectF, text: String, a: Float, primary: Boolean = false, icon: Icon? = null) {
         fill(c, r, radiusButton, if (primary) ink else fill, a)
         val p = if (primary) labelDark else label
-        val fg = if (primary) Color.BLACK else ink
+        val fg = if (primary) surface else ink
         if (icon == null) { centered(c, text, p, r.centerX(), r.centerY(), r.width() - s16, a); return }
         if (text.isEmpty()) { this.icon(c, icon, r.centerX(), r.centerY(), iconS, fg, a); return }
         val gap = dp(6f)
@@ -148,7 +201,7 @@ class Ui(context: Context) {
         stroke.color = alpha(fill, a * 1.6f)
         c.drawCircle(cx, cy, radius, stroke)
         if (frac <= 0f) return
-        stroke.color = alpha(ink, a)
+        stroke.color = alpha(accent, a)
         tmp.set(cx - radius, cy - radius, cx + radius, cy + radius)
         c.drawArc(tmp, -90f, 360f * frac.coerceIn(0f, 1f), false, stroke)
     }

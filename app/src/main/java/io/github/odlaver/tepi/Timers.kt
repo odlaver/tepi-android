@@ -29,6 +29,7 @@ class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, privat
 
     fun focus(minutes: Int) = start(Kind.Focus, minutes * 60_000L)
     fun countdown(minutes: Int) = start(Kind.Countdown, minutes * 60_000L)
+    fun countdownMs(ms: Long) = start(Kind.Countdown, ms)
 
     fun stopwatch() {
         stop(notify = false)

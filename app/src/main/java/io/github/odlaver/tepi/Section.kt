@@ -34,11 +34,19 @@ class Section : Page() {
         toggle(g, getString(R.string.lockscreen), getString(R.string.lockscreen_sub), prefs.bool("lockscreen", true), icon = Icon.Shield) {
             prefs.set("lockscreen", it); changed()
         }
-        slider(g, getString(R.string.offset), Prefs.OFFSET_MIN, Prefs.OFFSET_MAX, prefs.offsetDp, { (if (it > 0) "+$it" else "$it") + " dp" }, Icon.Pin) {
-            prefs.offsetDp = it
-            changed()
-            Listener.instance?.test()
+        choice(g, getString(R.string.anchor), listOf("camera" to getString(R.string.anchor_camera), "center" to getString(R.string.anchor_center)), prefs.anchor, Icon.Pin) {
+            prefs.anchor = it; changed()
         }
+        // Saver: auto from RAM and battery saver
+        choice(g, getString(if (Power.low(prefs)) R.string.power_low_on else R.string.power_low), listOf(
+            Power.AUTO to getString(R.string.power_auto), Power.ON to getString(R.string.power_on), Power.OFF to getString(R.string.power_off),
+        ), prefs.lowPower, Icon.Battery) { prefs.lowPower = it; changed()
+        }
+        row(g, getString(R.string.calibrate), getString(R.string.calibrate_sub), icon = Icon.Camera) {
+            startActivity(Intent(this, Pane::class.java).putExtra(MODE, Pane.CALIBRATE))
+        }
+        toggle(g, getString(R.string.hide_landscape), getString(R.string.hide_landscape_sub), prefs.hideLandscape, icon = Icon.Layers) { prefs.hideLandscape = it; changed() }
+        toggle(g, getString(R.string.hide_fullscreen), getString(R.string.hide_fullscreen_sub), prefs.hideFullscreen, icon = Icon.Hide) { prefs.hideFullscreen = it; changed() }
         label(getString(R.string.gestures))
         val h = group()
         for ((t, d, i) in listOf(
@@ -63,6 +71,12 @@ class Section : Page() {
         row(m, getString(R.string.apps), getString(R.string.apps_row_sub), icon = Icon.Layers) { startActivity(Intent(this, Apps::class.java)) }
         toggle(m, getString(R.string.notifs), getString(R.string.notifs_sub), prefs.notifs, icon = Icon.Chat) { prefs.notifs = it }
         toggle(m, getString(R.string.notif_content), getString(R.string.notif_content_sub), prefs.notifContent, icon = Icon.Eye) { prefs.notifContent = it }
+        // One pop-up per message
+        choice(m, getString(R.string.banner_owner), listOf(Banners.SYSTEM to getString(R.string.banner_from_android), Banners.TEPI to getString(R.string.banner_from_tepi)),
+            Banners.owner(prefs), Icon.Bell) { prefs.set("banner.owner", it) }
+        if (!Banners.systemOwns(prefs)) row(m, getString(R.string.banner_apps), getString(R.string.banner_apps_sub, Banners.switchName(this)), icon = Icon.Layers) {
+            startActivity(Intent(this, BannerApps::class.java))
+        }
         label(getString(R.string.system))
         val s = group()
         for ((key, title, detail, icon) in listOf(
@@ -70,6 +84,7 @@ class Section : Page() {
             Quad("act.call", R.string.act_call, R.string.act_call_sub, Icon.Phone),
             Quad("act.progress", R.string.act_progress, R.string.act_progress_sub, Icon.Download),
             Quad("act.nav", R.string.act_nav, R.string.act_nav_sub, Icon.Nav),
+            Quad("act.live", R.string.act_live, R.string.act_live_sub, Icon.Spark),
             Quad("act.ringer", R.string.act_ringer, R.string.act_ringer_sub, Icon.Bell),
             Quad("act.audio", R.string.act_audio, R.string.act_audio_sub, Icon.Headphones),
             Quad("act.privacy", R.string.act_privacy, R.string.act_privacy_sub, Icon.Shield),

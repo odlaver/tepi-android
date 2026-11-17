@@ -14,6 +14,17 @@ import android.provider.Settings
 object Oem {
     private val brand = (Build.MANUFACTURER + " " + Build.BRAND).lowercase()
 
+    enum class Family { Xiaomi, Oppo, Vivo, Huawei, Samsung, Other }
+
+    val family: Family = when {
+        listOf("xiaomi", "redmi", "poco").any { it in brand } -> Family.Xiaomi
+        listOf("oppo", "realme", "oneplus").any { it in brand } -> Family.Oppo
+        listOf("vivo", "iqoo").any { it in brand } -> Family.Vivo
+        listOf("huawei", "honor").any { it in brand } -> Family.Huawei
+        "samsung" in brand -> Family.Samsung
+        else -> Family.Other
+    }
+
     private val pages: List<ComponentName> = when {
         listOf("xiaomi", "redmi", "poco").any { it in brand } -> listOf(
             ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),

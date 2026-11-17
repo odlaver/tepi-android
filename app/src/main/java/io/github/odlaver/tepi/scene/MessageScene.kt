@@ -29,6 +29,8 @@ class Message(
     val app: String = "",
     val appIcon: Bitmap? = null,
     val at: Long = System.currentTimeMillis(),
+    // Android shows the pop-up itself
+    val quiet: Boolean = false,
 )
 
 // Incoming messages as a card, stacked
@@ -58,7 +60,7 @@ class MessageScene(host: Host) : Scene(host) {
 
     private fun arm() {
         main.removeCallbacks(drop)
-        if (!replying) main.postDelayed(drop, SHOW_MS)
+        if (!replying) main.postDelayed(drop, if (queue.firstOrNull()?.quiet == true) QUIET_MS else SHOW_MS)
     }
 
     private fun next() {
@@ -68,14 +70,19 @@ class MessageScene(host: Host) : Scene(host) {
     }
 
     override fun live() = queue.isNotEmpty()
-    override fun card() = true
+    override fun card() = queue.firstOrNull()?.quiet != true
     override fun dismiss() = next()
 
+    // Quiet: avatar left, app right
     override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {
         val m = queue.firstOrNull() ?: return
         val s = min(left.height(), ui.dp(22f))
         tmp.set(left.left, left.centerY() - s / 2, left.left + s, left.centerY() + s / 2)
         ui.art(c, m.icon, tmp, a, 0.5f)
+        if (!m.quiet || m.appIcon == null || m.appIcon === m.icon) return
+        val b = min(right.height(), ui.dp(18f))
+        tmp.set(right.right - b, right.centerY() - b / 2, right.right, right.centerY() + b / 2)
+        ui.art(c, m.appIcon, tmp, a, 0.5f)
     }
 
     override fun panelHeight(w: Float): Float {
@@ -125,7 +132,7 @@ class MessageScene(host: Host) : Scene(host) {
             val bs = ui.dp(16f)
             val bx = tmp.right - bs + ui.dp(3f)
             val by = tmp.bottom - bs + ui.dp(3f)
-            ui.dot(c, bx + bs / 2, by + bs / 2, bs / 2 + ui.dp(2f), android.graphics.Color.BLACK, a)
+            ui.dot(c, bx + bs / 2, by + bs / 2, bs / 2 + ui.dp(2f), ui.surface, a)
             tmp.set(bx, by, bx + bs, by + bs)
             ui.art(c, m.appIcon, tmp, a, 0.5f)
         }
@@ -211,5 +218,6 @@ class MessageScene(host: Host) : Scene(host) {
 
     companion object {
         private const val SHOW_MS = 5500L
+        private const val QUIET_MS = 4000L
     }
 }

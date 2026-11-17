@@ -25,15 +25,57 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
     private var offSince = 0L
     var quiet: () -> Boolean = { false }
 
+    // One-off reminders from Suruh Tepi
+    var due: (String, Long) -> Unit = { _, _ -> }
+    private val onceRun = Runnable { check() }
+
     private val tick = object : Runnable {
         override fun run() {
             check()
-            main.postDelayed(this, 30_000L)
+            main.postDelayed(this, if (Power.low(prefs)) 60_000L else 30_000L)
         }
     }
 
-    fun start() { main.removeCallbacks(tick); main.post(tick) }
-    fun stop() = main.removeCallbacks(tick)
+    fun start() { main.removeCallbacks(tick); main.post(tick); armOnce() }
+    fun stop() { main.removeCallbacks(tick); main.removeCallbacks(onceRun) }
+
+    // Screen lit: catch up now
+    fun wake() { main.removeCallbacks(onceRun); main.post(onceRun) }
+
+    fun once(at: Long, text: String) {
+        val list = onces().toMutableList()
+        list.add(at to text)
+        saveOnces(list.sortedBy { it.first }.take(50))
+        armOnce()
+    }
+
+    fun onces(): List<Pair<Long, String>> {
+        val arr = try { org.json.JSONArray(prefs.str("once", "[]")) } catch (_: Exception) { org.json.JSONArray() }
+        return (0 until arr.length()).mapNotNull { i -> arr.optJSONObject(i)?.let { it.optLong("at") to it.optString("t") } }
+    }
+
+    private fun saveOnces(list: List<Pair<Long, String>>) {
+        val arr = org.json.JSONArray()
+        for ((at, t) in list) arr.put(org.json.JSONObject().put("at", at).put("t", t))
+        prefs.set("once", arr.toString())
+    }
+
+    // Exact wake for the next one
+    private fun armOnce() {
+        main.removeCallbacks(onceRun)
+        val next = onces().minOfOrNull { it.first } ?: return
+        main.postDelayed(onceRun, (next - System.currentTimeMillis()).coerceAtLeast(0) + 50)
+    }
+
+    // Due ones wait for a lit screen
+    private fun fireOnces(now: Long) {
+        val all = onces()
+        val (ready, later) = all.partition { it.first <= now }
+        if (ready.isEmpty()) return
+        saveOnces(later)
+        for ((at, t) in ready) due(t, at)
+        armOnce()
+    }
 
     val prayOn get() = prefs.bool("pray", false) && city() != null
     fun city() = Prayer.city(prefs.str("pray.city", ""))
@@ -59,6 +101,7 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
         if (!power.isInteractive) { if (offSince == 0L) offSince = now; return }
         if (offSince > 0 && now - offSince > 300_000L) { lastEyes = now; lastStretch = now }
         offSince = 0
+        fireOnces(now)
         prayers(now)
         if (now < snoozeUntil || quiet()) return
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)

@@ -8,6 +8,9 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
+import android.graphics.Matrix
+import android.graphics.Shader
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
@@ -90,8 +93,8 @@ class Island(
     ).apply {
         gravity = Gravity.TOP or Gravity.START
         title = "Tepi"
-        layoutInDisplayCutoutMode = if (Build.VERSION.SDK_INT >= 30) WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
-        else WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+        if (Build.VERSION.SDK_INT >= 30) layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        else if (Build.VERSION.SDK_INT >= 28) layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         if (Build.VERSION.SDK_INT >= 30) fitInsetsTypes = 0
     }
     private var attached = false
@@ -113,6 +116,17 @@ class Island(
     private val radB = Spring(0f, 0.3f)
     private val bubbleK = Spring(0f, 0.004f, 420f, 30f)
     private val contentA = Spring(0f, 0.004f, 520f, 46f)
+    private val bodyA = Spring(1f, 0.004f, 700f, 53f)
+    private val gap = Spring(0f, 0.3f)
+    private val lid = Spring(1f, 0.01f, 900f, 50f)
+    private val rest = RectF()
+    private val sysHole = RectF()
+
+    // Vertical edges wait for the horizontal ones
+    private var pendingAt = 0L
+    private var pendingTune: Tune? = null
+    private val pendingT = FloatArray(2)
+    private var opening = true
     private val now = RectF()
     private val target = RectF()
     private val bubble = RectF()
@@ -131,6 +145,28 @@ class Island(
     private var lastTouch = 0L
 
     private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
+    private val sheen = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val unit = Matrix()
+    private var material = ""
+
+    // Calibration page is open
+    var calibrating = false
+        set(v) { field = v; refresh() }
+
+    // Battery for the camera ring
+    private var level = -1
+    private var charging = false
+    private var batteryOn = false
+    private val battery = object : android.content.BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            val l = i.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1) * 100 / max(1, i.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100))
+            val ch = i.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, 0) != 0
+            if (l == level && ch == charging) return
+            level = l; charging = ch
+            if (kind == Kind.Hidden) invalidate()
+        }
+    }
     private val shape = Path()
     private val tierA = Path()
     private val tierB = Path()
@@ -142,6 +178,7 @@ class Island(
 
     init {
         home.rows.add(MusicRow(this, music, media))
+        restyle()
     }
 
     fun register(scene: Scene, homeRow: HomeRow? = null) {
@@ -158,11 +195,14 @@ class Island(
         wm.addView(this, lp)
         attached = true
         try {
-            context.applicationContext.registerReceiver(lockWatch, android.content.IntentFilter().apply {
+            val f = android.content.IntentFilter().apply {
                 addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_USER_PRESENT)
-            }, Context.RECEIVER_NOT_EXPORTED)
+            }
+            if (Build.VERSION.SDK_INT >= 33) context.applicationContext.registerReceiver(lockWatch, f, Context.RECEIVER_NOT_EXPORTED)
+            else context.applicationContext.registerReceiver(lockWatch, f)
             listening = true
         } catch (_: Exception) { }
+        watchBattery()
         if (probeCtx != null && Settings.canDrawOverlays(context)) {
             val p = WindowManager.LayoutParams(1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT)
@@ -181,6 +221,8 @@ class Island(
         wm.removeView(this)
         if (listening) { try { context.applicationContext.unregisterReceiver(lockWatch) } catch (_: Exception) { }; listening = false }
         if (probing) { try { probeCtx?.getSystemService(WindowManager::class.java)?.removeView(probe) } catch (_: Exception) { }; probing = false }
+        main.removeCallbacks(blink)
+        unwatchBattery()
         attached = false
     }
 
@@ -194,6 +236,62 @@ class Island(
     fun prefsChanged() {
         measureScreen()
         music.reload()
+        restyle()
+        if (attached) watchBattery()
+        refresh()
+    }
+
+    // Ring only: battery broadcasts otherwise unneeded
+    private fun watchBattery() {
+        val want = prefs.idleShape == "ring"
+        if (want == batteryOn) return
+        if (!want) { unwatchBattery(); return }
+        try {
+            context.applicationContext.registerReceiver(battery, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { battery.onReceive(context, it) }
+            batteryOn = true
+        } catch (_: Exception) { }
+    }
+
+    private fun unwatchBattery() {
+        if (!batteryOn) return
+        try { context.applicationContext.unregisterReceiver(battery) } catch (_: Exception) { }
+        batteryOn = false
+    }
+
+    // Theme, material, and accent into Ui
+    override fun restyle() {
+        val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+        val dark = when (prefs.theme) { "light" -> false; "auto" -> night; else -> true }
+        material = prefs.material
+        val base = when {
+            material == "frost" && dark -> Color.rgb(46, 46, 50)
+            material == "frost" -> Color.rgb(226, 226, 230)
+            dark -> Color.BLACK
+            else -> Color.rgb(248, 248, 250)
+        }
+        ui.restyle(dark, base, Color.WHITE, prefs.widthDp, prefs.radiusDp)
+        val acc = when (prefs.accent) {
+            "cover" -> ui.coverAccent() ?: ui.ink
+            "green" -> if (dark) Color.rgb(48, 209, 88) else Color.rgb(36, 138, 61)
+            "blue" -> if (dark) Color.rgb(100, 170, 255) else Color.rgb(0, 88, 208)
+            "orange" -> if (dark) Color.rgb(255, 170, 60) else Color.rgb(178, 80, 0)
+            "pink" -> if (dark) Color.rgb(255, 120, 170) else Color.rgb(196, 30, 100)
+            else -> ui.ink
+        }
+        ui.accent = acc
+        bg.color = base
+        bg.alpha = prefs.opacity * 255 / 100
+        // Glass highlight in unit space
+        val hi = if (dark) Color.argb(46, 255, 255, 255) else Color.argb(150, 255, 255, 255)
+        sheen.shader = if (material == "liquid") LinearGradient(0f, 0f, 0f, 1f, intArrayOf(hi, Color.TRANSPARENT), floatArrayOf(0f, 0.45f), Shader.TileMode.CLAMP) else null
+        rim.strokeWidth = ui.dp(1f)
+        rim.shader = when {
+            material == "liquid" -> LinearGradient(0f, 0f, 0f, 1f, intArrayOf(if (dark) Color.argb(90, 255, 255, 255) else Color.argb(200, 255, 255, 255),
+                if (dark) Color.argb(14, 255, 255, 255) else Color.argb(30, 0, 0, 0)), null, Shader.TileMode.CLAMP)
+            else -> null
+        }
+        rim.color = if (dark) Color.argb(if (material == "frost") 40 else 46, 255, 255, 255) else Color.argb(36, 0, 0, 0)
+        invalidate()
     }
 
     fun openHome() = expand(home)
@@ -241,12 +339,14 @@ class Island(
     }
 
     private val closePanel = Runnable {
-        if (opened != null && SystemClock.uptimeMillis() - lastTouch >= CLOSE_MS - 100) { opened = null; refresh() }
+        if (opened != null && SystemClock.uptimeMillis() - lastTouch >= closeMs - 100) { opened = null; refresh() }
     }
+
+    private val closeMs get() = prefs.closeSec * 1000L
 
     private fun armClose() {
         main.removeCallbacks(closePanel)
-        main.postDelayed(closePanel, CLOSE_MS)
+        main.postDelayed(closePanel, closeMs)
     }
 
     private fun homeActions(): List<Action> {
@@ -269,11 +369,14 @@ class Island(
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
         measureScreen()
+        restyle()
         refresh()
     }
 
     override fun onApplyWindowInsets(insets: WindowInsets): WindowInsets {
         if (type == WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY) sense(insets)
+        // Android 9 knows the cutout only now
+        if (Build.VERSION.SDK_INT == 28 && sysHole.isEmpty && insets.displayCutout != null) { measureScreen(); main.post { refresh() } }
         return super.onApplyWindowInsets(insets)
     }
 
@@ -298,32 +401,53 @@ class Island(
         val m = DisplayMetrics()
         screen.getRealMetrics(m)
         screenW = m.widthPixels.toFloat()
-        val cut = screen.cutout
-        val top = cut?.boundingRectTop?.takeIf { !it.isEmpty }
-        if (top != null) {
-            hole.set(top)
-            // Path is tighter than the bounding box
-            if (Build.VERSION.SDK_INT >= 31) cut?.cutoutPath?.let { p ->
-                val bounds = RectF()
-                p.computeBounds(bounds, true)
-                if (bounds.intersect(hole)) hole.set(bounds)
-            }
+        val found = cameraRect()
+        if (found != null) {
+            hole.set(found)
             // Bar down from the edge: a round hole inside
             if (hole.top <= 1f && hole.height() > hole.width() * 1.4f) {
                 val rr = hole.width() / 2
                 val cy = hole.height() / 2
                 hole.set(hole.centerX() - rr, cy - rr, hole.centerX() + rr, cy + rr)
             }
+            sysHole.set(hole)
         } else {
             hole.set(screenW / 2 - ui.dp(10f), ui.dp(10f), screenW / 2 + ui.dp(10f), ui.dp(30f))
+            sysHole.setEmpty()
         }
-        hole.offset(0f, ui.dp(prefs.offsetDp.toFloat()))
+        if (prefs.anchor == "center") hole.offset(screenW / 2 - hole.centerX(), 0f)
+        // Calibration in half-dp steps
+        val grow = ui.dp(prefs.calSize / 4f)
+        hole.inset(-grow, -grow)
+        hole.offset(ui.dp(prefs.calX / 2f), ui.dp(prefs.calY / 2f))
         val pad = ui.dp(5f)
         pill.set(hole.left - pad, max(0f, hole.top - pad), hole.right + pad, hole.bottom + pad)
         if (pill.height() < ui.dp(30f)) pill.bottom = pill.top + ui.dp(30f)
         val bar = resources.getIdentifier("status_bar_height", "dimen", "android").let { if (it != 0) resources.getDimensionPixelSize(it) else 0 }
-        statusBottom = max(pill.bottom, (cut?.safeInsetTop?.takeIf { it > 0 } ?: bar).toFloat())
+        val safe = if (Build.VERSION.SDK_INT >= 29) screen.cutout?.safeInsetTop ?: 0 else 0
+        statusBottom = max(pill.bottom, (if (safe > 0) safe else bar).toFloat())
         wingBase = max(pill.height() * 1.3f, ui.dp(36f))
+        // Idle pill hugs the camera
+        val rw = pill.height() * if (prefs.idleEyes) 3.4f else 2.2f
+        rest.set(hole.centerX() - rw / 2, pill.top, hole.centerX() + rw / 2, pill.bottom)
+        if (rest.left < ui.dp(4f)) rest.offset(ui.dp(4f) - rest.left, 0f)
+        if (rest.right > screenW - ui.dp(4f)) rest.offset(screenW - ui.dp(4f) - rest.right, 0f)
+    }
+
+    // Top cutouts joined; path is tighter than boxes
+    private fun cameraRect(): RectF? {
+        if (Build.VERSION.SDK_INT < 28) return null
+        val cut = (if (Build.VERSION.SDK_INT >= 29) screen.cutout else rootWindowInsets?.displayCutout) ?: return null
+        val band = ui.dp(80f)
+        val out = RectF()
+        for (r in cut.boundingRects) if (!r.isEmpty && r.top < band) out.union(RectF(r))
+        if (out.isEmpty) return null
+        if (Build.VERSION.SDK_INT >= 31) cut.cutoutPath?.let { p ->
+            val b = RectF()
+            p.computeBounds(b, true)
+            if (b.intersect(out)) out.set(b)
+        }
+        return out
     }
 
     private val landscape get() = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -335,7 +459,7 @@ class Island(
         val lock = locked
         val live = scenes.filter { it.live() && !(lock && it.personal) }.sortedByDescending { it.priority }
         // The fullscreen probe goes dark under the lock screen; ignore it there
-        val quiet = landscape || (fullscreen && !lock) || hiddenUntil > SystemClock.uptimeMillis() || (lock && !prefs.bool("lockscreen", true))
+        val quiet = (landscape && prefs.hideLandscape) || (fullscreen && !lock && prefs.hideFullscreen) || hiddenUntil > SystemClock.uptimeMillis() || (lock && !prefs.bool("lockscreen", true))
         val shown = if (quiet) live.filter { it.priority >= URGENT } else live
         val op = opened
         when {
@@ -352,6 +476,23 @@ class Island(
 
     private fun compactWidth(s: Scene?) = pill.width() + max(s?.wing() ?: 0f, wingBase) * 2
 
+    // Open bouncy, close settled
+    private fun tunes(open: Boolean): Tune = when {
+        systemStill() -> SNAP
+        minimal -> MIN
+        prefs.motion == "smooth" -> if (open) SMOOTH_OPEN else CLOSE
+        else -> if (open) OPEN else CLOSE
+    }
+
+    // Minim, or low-power mode
+    private val minimal get() = prefs.motion == "min" || Power.low(prefs)
+
+    // Animations off in system settings
+    private fun systemStill() = !android.animation.ValueAnimator.areAnimatorsEnabled()
+
+    private val idleShape get() = if (calibrating) "pill" else prefs.idleShape
+    private val floating get() = prefs.panelStyle == "floating"
+
     // Recompute target, start motion
     override fun refresh() {
         if (!attached) return
@@ -361,9 +502,11 @@ class Island(
         var sy: Float
         var rt = pill.height() / 2
         var rb = rt
+        var gp = 0f
         when (kind) {
             Kind.Hidden -> {
-                target.set(hole); nk = hole.width(); sy = hole.top; rt = hole.height() / 2; rb = rt
+                if (idleShape == "pill") { target.set(rest); nk = rest.width(); sy = rest.top }
+                else { target.set(hole); nk = hole.width(); sy = hole.top; rt = hole.height() / 2; rb = rt }
             }
             Kind.Compact -> {
                 val w = compactWidth(primary)
@@ -381,8 +524,9 @@ class Island(
                 val w = wide
                 val h = primary?.panelHeight(w - ui.pad * 2) ?: 0f
                 val dots = if (opened != null && pages().size > 1) ui.dp(18f) else 0f
-                target.set(cx - w / 2, pill.top, cx + w / 2, statusBottom + ui.s16 + h + ui.pad + dots)
-                nk = min(compactWidth(if (primary?.card() == true) null else primary), w)
+                if (floating) gp = ui.s8
+                target.set(cx - w / 2, pill.top, cx + w / 2, statusBottom + gp + ui.s16 + h + ui.pad + dots)
+                nk = if (floating) rest.width() else min(compactWidth(if (primary?.card() == true) null else primary), w)
                 sy = statusBottom; rb = ui.radiusPanel
             }
         }
@@ -391,25 +535,71 @@ class Island(
         if (target.left < m) target.offset(m - target.left, 0f)
         if (target.right > screenW - m) target.offset(screenW - m - target.right, 0f)
 
-        l.target = target.left; t.target = target.top; r.target = target.right; b.target = target.bottom
-        neck.target = nk; split.target = sy; rad.target = rt; radB.target = rb
+        // Growing or shrinking decides the feel
+        val area = (r.target - l.target) * (b.target - t.target)
+        val open = target.width() * target.height() >= area - 1f
+        val tune = tunes(open)
+        opening = open
+        val lag = if (tune === SNAP || tune === MIN) 0L else 40L
+        l.to(target.left, tune); r.to(target.right, tune)
+        neck.to(nk, tune); rad.to(rt, tune); radB.to(rb, tune); gap.to(gp, tune)
+        if (open && lag > 0) {
+            // Width leads, height follows
+            pendingT[0] = target.top; pendingT[1] = target.bottom
+            pendingTune = tune
+            pendingAt = SystemClock.uptimeMillis() + lag
+            split.to(sy, tune)
+        } else {
+            pendingTune = null
+            t.to(target.top, tune); b.to(target.bottom, tune); split.to(sy, tune)
+        }
+        if (tune === SNAP) for (sp in arrayOf(l, t, r, b, rad, neck, split, radB, gap)) sp.snap(sp.target)
         bubbleK.target = if (second != null) 1f else 0f
         val d = pill.height()
         bubble.set(target.right + ui.s8, pill.top, target.right + ui.s8 + d, pill.bottom)
 
         wantedKey = "$kind:${primary?.id}"
-        if (wantedKey != shownKey) contentA.target = 0f
+        if (wantedKey != shownKey) contentA.to(0f, FADE_OUT)
+        if (kind != Kind.Hidden || idleShape == "pill") bodyA.to(1f, FADE_IN)
         contentDescription = primary?.describe()
+        armBlink()
 
         // Grow first; shrink once settled
         val union = RectF(target)
         union.union(l.value, t.value, r.value, b.value)
         if (second != null || bubbleK.value > 0.01f) union.union(bubble)
+        if (kind == Kind.Hidden && idleShape == "ring") union.union(ringBox())
         place(union, kind != Kind.Hidden || hotspot())
         kick()
     }
 
-    private fun hotspot() = touchable && prefs.cameraTap
+    // Shape close enough to its target
+    private fun grown(): Float {
+        val w = r.value - l.value
+        val h = b.value - t.value
+        val tw = max(1f, target.width())
+        val th = max(1f, target.height())
+        return min(min(w, tw) / max(w, tw), min(h, th) / max(h, th))
+    }
+
+    private fun ringBox() = RectF(hole).apply { inset(-ui.dp(7f), -ui.dp(7f)) }
+
+    // Blink now and then while idle
+    private val blink = Runnable {
+        if (kind == Kind.Hidden && idleShape == "pill" && prefs.idleEyes && isShown) {
+            lid.to(0.12f, BLINK)
+            main.postDelayed({ lid.to(1f, BLINK); kick() }, 110)
+            kick()
+        }
+        armBlink()
+    }
+
+    private fun armBlink() {
+        main.removeCallbacks(blink)
+        if (kind == Kind.Hidden && idleShape == "pill" && prefs.idleEyes && !minimal) main.postDelayed(blink, 4000L + (Math.random() * 3000).toLong())
+    }
+
+    private fun hotspot() = prefs.cameraTap && (touchable || idleShape == "pill")
 
     // Window covers the moving shape only
     private fun place(rect: RectF, touch: Boolean) {
@@ -441,15 +631,24 @@ class Island(
         val dt = if (lastNs == 0L) 1f / 60f else ((ns - lastNs) / 1e9f).coerceIn(0f, 1f / 20f)
         lastNs = ns
         var moving = false
-        for (s in arrayOf(l, t, r, b, rad, neck, split, radB, bubbleK)) moving = s.step(dt) or moving
+        pendingTune?.let { tu ->
+            if (SystemClock.uptimeMillis() >= pendingAt) { t.to(pendingT[0], tu); b.to(pendingT[1], tu); pendingTune = null }
+            moving = true
+        }
+        for (s in arrayOf(l, t, r, b, rad, neck, split, radB, bubbleK, gap)) moving = s.step(dt) or moving
         moving = contentA.step(dt) or moving
-        if (contentA.value <= 0.05f && contentA.target == 0f) {
+        if (contentA.value <= 0.05f && contentA.target == 0f && shownKey != wantedKey) {
             shownKey = wantedKey
             shownScene = primary
             shownKind = kind
-            contentA.target = if (kind == Kind.Hidden) 0f else 1f
             if (kind == Kind.Hidden) contentA.snap(0f)
         }
+        // Content waits for the shape
+        if (shownKey == wantedKey && kind != Kind.Hidden && contentA.target == 0f && grown() > 0.6f) contentA.to(1f, FADE_IN)
+        // Hidden: fade out at lens size, no pop
+        if (kind == Kind.Hidden && idleShape != "pill") bodyA.to(if (r.value - l.value < hole.width() * 1.25f) 0f else 1f, FADE_LENS)
+        moving = bodyA.step(dt) or moving
+        moving = lid.step(dt) or moving
         for (s in scenes) moving = s.step(dt) or moving
         val op = opened
         if (op != null && op !in scenes) moving = op.step(dt) or moving
@@ -465,7 +664,11 @@ class Island(
     }
 
     private fun settle() {
-        if (kind == Kind.Hidden) place(if (hotspot()) pill else hole, hotspot())
+        if (kind == Kind.Hidden) when (idleShape) {
+            "pill" -> place(rest, hotspot())
+            "ring" -> place(if (hotspot()) RectF(pill).apply { union(ringBox()) } else ringBox(), hotspot())
+            else -> place(if (hotspot()) pill else hole, hotspot())
+        }
         else {
             val rect = RectF(target)
             if (second != null) rect.union(bubble)
@@ -475,45 +678,56 @@ class Island(
 
     override fun onDraw(canvas: Canvas) {
         now.set(l.value, t.value, r.value, b.value)
-        if (kind == Kind.Hidden && shownKind == Kind.Hidden && !ticking) return
+        val ring = kind == Kind.Hidden && idleShape == "ring"
+        val body = bodyA.value.coerceIn(0f, 1f)
+        if (kind == Kind.Hidden && shownKind == Kind.Hidden && !ticking && body < 0.01f && !ring && !calibrating) return
         getLocationOnScreen(loc)
         canvas.save()
         canvas.translate(-loc[0].toFloat(), -loc[1].toFloat())
         buildShape(shape)
         val k = bubbleK.value.coerceIn(0f, 1f)
         if (k > 0.01f) shape.addCircle(bubble.centerX(), bubble.centerY(), pill.height() / 2 * k, Path.Direction.CW)
-        canvas.drawPath(shape, bg)
+        if (body > 0.01f) paintBody(canvas, body)
+        if (ring) drawRing(canvas, 1f - body)
         canvas.clipPath(shape)
+        if (kind == Kind.Hidden && idleShape == "pill" && prefs.idleEyes && !calibrating) drawEyes(canvas, body)
         val a = contentA.value.coerceIn(0f, 1f)
         val s = shownScene
-        if (a > 0.01f && s != null) when (shownKind) {
-            Kind.Compact -> {
-                zones(now)
-                s.drawCompact(canvas, zoneL, zoneR, a)
-                if (now.bottom > pill.bottom + 1f) {
-                    val rowA = ((now.bottom - statusBottom) / ui.dp(32f)).coerceIn(0f, 1f) * a
-                    box.set(now.left, statusBottom, now.right, now.bottom)
-                    if (rowA > 0.02f) s.drawRow(canvas, box, rowA)
-                }
-            }
-            Kind.Panel -> {
-                val list = if (opened != null) pages() else emptyList()
-                val dots = if (list.size > 1) ui.dp(18f) else 0f
-                content.set(target.left + ui.pad, statusBottom + ui.s16, target.right - ui.pad, target.bottom - ui.pad - dots)
-                s.drawPanel(canvas, content, a)
-                // Page dots: which tab, and that there are more
-                if (list.size > 1) {
-                    val r = ui.dp(3f)
-                    val gap = ui.dp(10f)
-                    val y = target.bottom - ui.pad / 2 - dots / 2
-                    var x = target.centerX() - (list.size - 1) * gap / 2
-                    for (p in list) {
-                        ui.dot(canvas, x, y, r, if (p === s) ui.ink else ui.faint, a)
-                        x += gap
+        if (a > 0.01f && s != null && shownKind != Kind.Hidden) {
+            canvas.save()
+            // Content settles in from slightly small
+            if (!minimal) { val sc = 0.94f + 0.06f * a; canvas.scale(sc, sc, now.centerX(), now.top) }
+            when (shownKind) {
+                Kind.Compact -> {
+                    zones(now)
+                    s.drawCompact(canvas, zoneL, zoneR, a)
+                    if (now.bottom > pill.bottom + 1f) {
+                        val rowA = ((now.bottom - statusBottom) / ui.dp(32f)).coerceIn(0f, 1f) * a
+                        box.set(now.left, statusBottom, now.right, now.bottom)
+                        if (rowA > 0.02f) s.drawRow(canvas, box, rowA)
                     }
                 }
+                Kind.Panel -> {
+                    val list = if (opened != null) pages() else emptyList()
+                    val dots = if (list.size > 1) ui.dp(18f) else 0f
+                    val g = gap.value
+                    content.set(target.left + ui.pad, statusBottom + g + ui.s16, target.right - ui.pad, target.bottom - ui.pad - dots)
+                    s.drawPanel(canvas, content, a)
+                    // Page dots: which tab, and that there are more
+                    if (list.size > 1) {
+                        val r = ui.dp(3f)
+                        val gapX = ui.dp(10f)
+                        val y = target.bottom - ui.pad / 2 - dots / 2
+                        var x = target.centerX() - (list.size - 1) * gapX / 2
+                        for (p in list) {
+                            ui.dot(canvas, x, y, r, if (p === s) ui.ink else ui.faint, a)
+                            x += gapX
+                        }
+                    }
+                }
+                Kind.Hidden -> Unit
             }
-            Kind.Hidden -> Unit
+            canvas.restore()
         }
         val sec = second
         if (k > 0.05f && sec != null && shownKind == Kind.Compact) {
@@ -521,6 +735,73 @@ class Island(
             sec.drawBubble(canvas, box, k * a)
         }
         canvas.restore()
+        if (calibrating) drawGuide(canvas)
+    }
+
+    // Fill, glass sheen, and rim
+    private fun paintBody(c: Canvas, a: Float) {
+        val base = bg.alpha
+        bg.alpha = (base * a).toInt()
+        c.drawPath(shape, bg)
+        bg.alpha = base
+        if (sheen.shader != null) {
+            unit.setScale(1f, max(1f, now.height()))
+            unit.postTranslate(0f, now.top)
+            sheen.shader.setLocalMatrix(unit)
+            sheen.alpha = (255 * a).toInt()
+            c.drawPath(shape, sheen)
+        }
+        if (material == "liquid" || material == "frost" || prefs.outline) {
+            rim.shader?.let { unit.setScale(1f, max(1f, now.height())); unit.postTranslate(0f, now.top); it.setLocalMatrix(unit) }
+            rim.alpha = (255 * a).toInt()
+            c.drawPath(shape, rim)
+        }
+    }
+
+    // Battery ring around the lens
+    private fun drawRing(c: Canvas, a: Float) {
+        if (a < 0.01f) return
+        val rr = hole.width() / 2 + ui.dp(4f)
+        val w = ui.dp(3f)
+        ui.stroke.strokeWidth = w
+        ui.stroke.color = ui.alpha(Color.BLACK, a * 0.55f)
+        c.drawCircle(hole.centerX(), hole.centerY(), rr, ui.stroke)
+        val frac = if (level < 0) 0f else level / 100f
+        ui.stroke.color = ui.alpha(when {
+            charging -> Color.rgb(52, 199, 89)
+            level in 0..15 -> Color.rgb(255, 69, 58)
+            else -> Color.WHITE
+        }, a)
+        box.set(hole.centerX() - rr, hole.centerY() - rr, hole.centerX() + rr, hole.centerY() + rr)
+        c.drawArc(box, -90f, 360f * frac, false, ui.stroke)
+    }
+
+    // Tepi's eyes beside the camera
+    private fun drawEyes(c: Canvas, a: Float) {
+        val h = rest.height() * 0.42f * lid.value.coerceIn(0.1f, 1f)
+        val w = rest.height() * 0.22f
+        val y = rest.centerY()
+        val off = hole.width() / 2 + (rest.width() / 2 - hole.width() / 2) * 0.55f
+        for (x in floatArrayOf(hole.centerX() - off, hole.centerX() + off)) {
+            box.set(x - w / 2, y - h / 2, x + w / 2, y + h / 2)
+            ui.fill(c, box, w / 2, ui.ink, a)
+        }
+    }
+
+    // Where the system says the camera is
+    private fun drawGuide(c: Canvas) {
+        getLocationOnScreen(loc)
+        c.save()
+        c.translate(-loc[0].toFloat(), -loc[1].toFloat())
+        ui.stroke.strokeWidth = ui.dp(1.5f)
+        ui.stroke.color = ui.accent
+        c.drawOval(hole, ui.stroke)
+        if (!sysHole.isEmpty) {
+            ui.stroke.strokeWidth = ui.dp(1f)
+            ui.stroke.color = Color.argb(200, 255, 69, 58)
+            c.drawRect(sysHole, ui.stroke)
+        }
+        c.restore()
     }
 
     // Left and right of the camera inside the neck
@@ -548,6 +829,15 @@ class Island(
         }
         val rt = min(rad.value, nk / 2)
         val rb = min(radB.value, min(w, now.bottom - sy) / 2)
+        val g = gap.value
+        if (g > 0.5f) {
+            // Floating card under a separate pill
+            box.set(cx - nk / 2, now.top, cx + nk / 2, min(sy, now.top + pill.height()))
+            out.addRoundRect(box, rt, rt, Path.Direction.CW)
+            box.set(now.left, sy + g, now.right, now.bottom)
+            out.addRoundRect(box, rb, rb, Path.Direction.CW)
+            return
+        }
         tierA.reset()
         box.set(cx - nk / 2, now.top, cx + nk / 2, min(now.bottom, sy + rt))
         tierA.addRoundRect(box, rt, rt, Path.Direction.CW)
@@ -583,7 +873,7 @@ class Island(
 
     private fun inside(x: Float, y: Float): Boolean {
         if (kind == Kind.Hidden) {
-            box.set(pill); box.inset(-ui.s8, -ui.s8)
+            box.set(if (idleShape == "pill") rest else pill); box.inset(-ui.s8, -ui.s8)
             return hotspot() && box.contains(x, y)
         }
         if (now.contains(x, y)) return true
@@ -679,7 +969,15 @@ class Island(
     }
 
     companion object {
-        private const val CLOSE_MS = 9000L
         const val URGENT = 95
+        private val OPEN = Tune(300f, 25f)
+        private val SMOOTH_OPEN = Tune(260f, 32.2f)
+        private val CLOSE = Tune(420f, 41f)
+        private val MIN = Tune(1600f, 80f)
+        private val SNAP = Tune(1600f, 80f)
+        private val FADE_IN = Tune(420f, 41f)
+        private val FADE_OUT = Tune(900f, 60f)
+        private val FADE_LENS = Tune(700f, 53f)
+        private val BLINK = Tune(2200f, 90f)
     }
 }

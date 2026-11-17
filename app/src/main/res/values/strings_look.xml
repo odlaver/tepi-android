@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_general">General</string>
+    <string name="sec_general_sub">Language, backup, tour</string>
+    <string name="section_look">Appearance</string>
+    <string name="sec_look_sub">Idle shape, glass, colour, panel</string>
+    <string name="section_a11y">Accessibility</string>
+    <string name="sec_a11y_sub">Motion style</string>
+    <string name="sec_island_sub2">Position, camera alignment, gestures</string>
+    <string name="sec_about_sub2">What\'s new, feedback, maker</string>
+
+    <string name="idle_shape">When idle</string>
+    <string name="idle_pill">Pill around the camera</string>
+    <string name="idle_ring">Battery ring around the camera</string>
+    <string name="idle_hide">Hidden</string>
+    <string name="idle_eyes">Tepi\'s eyes</string>
+    <string name="idle_eyes_sub">Two eyes beside the camera that blink now and then</string>
+    <string name="look_island">Island</string>
+    <string name="theme">Theme</string>
+    <string name="theme_dark">Dark</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_auto">Follow the system</string>
+    <string name="material">Material</string>
+    <string name="material_solid">Solid</string>
+    <string name="material_liquid">Liquid glass</string>
+    <string name="material_frost">Frost</string>
+    <string name="opacity">Opacity</string>
+    <string name="opacity_note">Below full opacity the status bar shows through the island.</string>
+    <string name="accent">Accent</string>
+    <string name="accent_mono">Monochrome</string>
+    <string name="accent_cover">From the song cover</string>
+    <string name="accent_green">Green</string>
+    <string name="accent_blue">Blue</string>
+    <string name="accent_orange">Orange</string>
+    <string name="accent_pink">Pink</string>
+    <string name="outline">Hairline edge</string>
+    <string name="outline_sub">Keeps a dark island visible on dark screens</string>
+    <string name="look_panel">Panel</string>
+    <string name="panel_style">Panel shape</string>
+    <string name="panel_attached">Grows from the camera</string>
+    <string name="panel_floating">Floating card</string>
+    <string name="panel_width">Panel width</string>
+    <string name="panel_radius">Corner radius</string>
+    <string name="close_after">Closes by itself after</string>
+    <string name="t_sec_n">%1$d s</string>
+    <string name="look_reset">Restore defaults</string>
+    <string name="look_reset_done">Appearance restored</string>
+
+    <string name="anchor">Position</string>
+    <string name="anchor_camera">Follow the camera</string>
+    <string name="anchor_center">Screen centre</string>
+    <string name="calibrate">Camera alignment</string>
+    <string name="calibrate_sub">Line the island up with your camera</string>
+    <string name="calibrate_note">Move the sliders until the circle sits exactly around the camera. The red box is where Android says the camera is.</string>
+    <string name="calibrate_none">Android reports no camera cutout on this phone, so Tepi places the island at the top centre. Move it where you like.</string>
+    <string name="cal_x">Left and right</string>
+    <string name="cal_y">Up and down</string>
+    <string name="cal_size">Lens size</string>
+    <string name="cal_reset">Reset alignment</string>
+    <string name="hide_landscape">Hide in landscape</string>
+    <string name="hide_landscape_sub">Calls and timers still show</string>
+    <string name="hide_fullscreen">Hide in fullscreen apps</string>
+    <string name="hide_fullscreen_sub">Videos and games stay clear</string>
+
+    <string name="motion">Motion</string>
+    <string name="motion_spring">Springy</string>
+    <string name="motion_smooth">Smooth, no bounce</string>
+    <string name="motion_min">Minimal</string>
+    <string name="motion_note">If animations are off in Android\'s developer or accessibility settings, the island moves instantly.</string>
+
+    <string name="language">Language</string>
+    <string name="language_sub">English or Indonesian, set per app in Android</string>
+    <string name="backup">Settings backup</string>
+    <string name="export_prefs">Export settings</string>
+    <string name="export_prefs_sub">A JSON file. Tokens, sessions, and the laptop pairing are never included.</string>
+    <string name="import_prefs">Import settings</string>
+    <string name="import_prefs_sub">Only Tepi settings are read from the file</string>
+    <string name="export_done">Settings exported</string>
+    <string name="import_done">Settings imported</string>
+    <string name="import_bad">That file is not a Tepi settings file</string>
+
+    <string name="whats_new">What\'s new</string>
+    <string name="whats_new_sub">Summary of Tepi %1$s</string>
+    <string name="tour">Tepi tour</string>
+    <string name="tour_sub">Meet Tepi\'s main features again</string>
+    <string name="tour_start">Start tour</string>
+    <string name="feedback">Send feedback</string>
+    <string name="feedback_sub">A feature idea or a problem, straight to Tepi\'s maker</string>
+    <string name="fb_idea">Feature idea</string>
+    <string name="fb_problem">Something\'s wrong</string>
+    <string name="fb_other">Other</string>
+    <string name="fb_text_hint">What would you like to tell us?</string>
+    <string name="fb_contact_hint">Email or Instagram, if you want a reply</string>
+    <string name="fb_system">Include Tepi version and phone model</string>
+    <string name="fb_send">Send</string>
+    <string name="fb_sent">Sent. Thank you</string>
+    <string name="fb_failed">Not sent. Check your internet</string>
+    <string name="fb_rejected">The form refused it (%1$d)</string>
+    <string name="maker">Maker</string>
+    <string name="maker_role">Makes and maintains Tepi</string>
+    <string name="open_profile">Open profile</string>
+    <string name="github_sub">Tepi\'s code and other projects</string>
+
+    <string name="tour_skip">Skip</string>
+    <string name="tour_next">Next</string>
+    <string name="tour_done">Start using Tepi</string>
+    <string name="tour1_title">An island around your camera</string>
+    <string name="tour1_body">Tepi sits at the camera and grows when something happens: a song, a message, a call, a download, a timer, or prayer time.</string>
+    <string name="tour2_title">Tap, swipe, hold</string>
+    <string name="tour2_body">Tap the island to open it. Swipe down for the panel, up to close, sideways to switch tabs. Hold for quick actions like timers, notes, and Bank mode.</string>
+    <string name="tour3_title">Make it yours</string>
+    <string name="tour3_body">Choose how Tepi looks when nothing is happening. You can change this, the glass, and the colours later in Appearance.</string>
+    <string name="tour4_title">Fits your camera</string>
+    <string name="tour4_body">If the island doesn\'t line up with your camera, open Camera alignment and move it until it fits.</string>
+    <string name="tour5_title">Works with your laptop</string>
+    <string name="tour5_body">With Tepi for Windows, answer coding agents, copy codes, and send files between phone and laptop. Connect from Integrations, Laptop.</string>
+    <string name="tour6_title">Light by design</string>
+    <string name="tour6_body">No account, no ads, no analytics. Tepi draws nothing while idle and only needs the permissions on the next screen.</string>
+    <string name="update_channel">Tepi updates</string>
+    <string name="update_tap">Tap to download the new APK</string>
+    <string name="update_notify">Tell me about new versions</string>
+    <string name="update_notify_sub">Checks GitHub once a day, shows it in the island and the notification shade</string>
+    <string name="update_check">Check for updates</string>
+    <string-array name="whats_new">
+        <item>The island grows out of the camera and settles back without a pop</item>
+        <item>Choose how Tepi looks when idle: a pill around the camera, a battery ring, or hidden</item>
+        <item>Liquid glass and Frost, opacity, theme, and accent colours, including one from the song cover</item>
+        <item>Camera alignment to line the island up with your camera</item>
+        <item>Floating panel, panel width, corner radius, and how long it stays open</item>
+        <item>Motion style: springy, smooth, or minimal</item>
+        <item>A tour for new installs, settings backup, and feedback straight from Tepi</item>
+    </string-array>
+</resources>

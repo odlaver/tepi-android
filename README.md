@@ -10,7 +10,7 @@ Dynamic island untuk HP Android yang tidak punya island bawaan. Saudara dari [Te
   <img src="docs/catatan.png" width="32%" alt="Tab Catatan">
 </p>
 
-Island duduk di sekitar kamera depan dan membesar saat ada yang terjadi: lagu yang diputar, pesan masuk, panggilan, unduhan, navigasi, timer, kelas berikutnya, dan waktu sholat. Ditulis dengan Kotlin tanpa pustaka tambahan selain ML Kit untuk terjemahan. Tampilan tersedia dalam bahasa Indonesia dan Inggris.
+Island duduk di sekitar kamera depan dan membesar saat ada yang terjadi: lagu yang diputar, pesan masuk, panggilan, unduhan, navigasi, timer, kelas berikutnya, dan waktu sholat. Ditulis dengan Kotlin; satu-satunya pustaka luar adalah pemindai QR dari Play services. APK utama (Lite) di bawah 1 MB; varian Full menambahkan terjemahan di HP lewat ML Kit. Tampilan tersedia dalam bahasa Indonesia dan Inggris.
 
 ## Fitur
 
@@ -42,15 +42,24 @@ Island duduk di sekitar kamera depan dan membesar saat ada yang terjadi: lagu ya
 
 Tepi juga bisa dibuka dari tile di Quick Settings dan dari pintasan saat ikon Tepi ditahan.
 
+**Tampilan.** Saat diam, island bisa berupa pil di sekitar kamera (dengan mata Tepi kalau mau), cincin baterai di sekeliling lensa, atau sembunyi. Pilih tema gelap, terang, atau ikuti sistem; material Pekat, Kaca Liquid, atau Frost beserta kepekatannya; aksen monokrom, dari sampul lagu, atau warna pilihan; panel yang tumbuh dari kamera atau kartu mengambang, lebar, sudut, dan lama terbuka; serta gaya gerak Pegas, Halus, atau Minim. **Penyelaras kamera** menggeser island per setengah dp sampai pas dengan kamera HP.
+
+**Pop-up tidak dobel.** Pilih siapa yang memunculkan pop-up pesan: Android (Tepi cukup tampil kecil) atau Tepi (Tepi menunjukkan aplikasi mana yang pop-up Android-nya masih nyala). Pesan yang sama dari pembaruan notifikasi, riwayat percakapan, atau aplikasi kembar hanya tampil sekali.
+
 **Lainnya:**
-- terjemahan di HP lewat ML Kit, dari menu seleksi teks;
+- Suruh Tepi: ketik "timer 5:30", "ingetin minum 30 menit lagi", atau "5 km ke mil", tanpa internet;
+- aktivitas berjalan Android 16 (ojek, antar makanan, dan lainnya) tampil sendiri;
+- mode hemat otomatis di HP RAM kecil, Android Go, atau saat penghemat baterai nyala;
+- pemberitahuan versi baru sekali sehari, dan tombol cek pembaruan di Umum dan Tentang;
+- tur singkat saat pertama dipasang, cadangan pengaturan, dan kirim saran langsung dari Tepi;
+- terjemahan di HP lewat ML Kit dari menu seleksi teks (varian Full); di Lite, tombol Terjemahkan diteruskan ke aplikasi penerjemah yang terpasang;
 - island tetap tampil di layar kunci, tapi hanya musik, timer, dan ibadah. Isi pesan, catatan, rak, dan agenda baru terlihat setelah HP dibuka;
 - pilihan aplikasi mana saja yang notifikasinya dibaca Tepi;
 - sakelar utama untuk mematikan semuanya sekaligus.
 
 ## Pasang
 
-Unduh APK terbaru di [Releases](https://github.com/odlaver/tepi-android/releases), lalu pasang. Butuh Android 10 ke atas dengan prosesor arm64. APK ditandatangani R. Revaldo Vabiansyah; pembaruan berikutnya bisa dipasang di atasnya tanpa menghapus aplikasi.
+Unduh APK terbaru di [Releases](https://github.com/odlaver/tepi-android/releases), lalu pasang. Butuh Android 8 ke atas, prosesor apa pun. Pilih Lite kecuali butuh terjemahan di HP (Full, khusus arm64). APK ditandatangani R. Revaldo Vabiansyah; pembaruan berikutnya bisa dipasang di atasnya tanpa menghapus aplikasi.
 
 Semua izin bisa dinyalakan dari layar pertama Tepi:
 
@@ -59,6 +68,7 @@ Semua izin bisa dinyalakan dari layar pertama Tepi:
 | Tampil di atas aplikasi lain | Menggambar island dan mengenali aplikasi layar penuh |
 | Akses notifikasi | Membaca lagu yang diputar, pesan masuk, dan notifikasi berprogres |
 | Autostart dan baterai | Xiaomi, Oppo, Vivo, dan Huawei menghentikan Tepi di latar tanpa ini |
+| Notifikasi (opsional) | Pemberitahuan versi baru di panel notifikasi |
 | Aksesibilitas (opsional) | Satu jendela di atas status bar supaya island bisa disentuh di sana, termasuk ketuk kamera |
 
 Android 13 ke atas mengunci akses notifikasi dan aksesibilitas untuk aplikasi dari luar Play Store. Buka kuncinya di Info aplikasi › ⋮ › Izinkan setelan terbatas.
@@ -85,7 +95,8 @@ Tidak ada akun, server, atau analitik. Yang keluar dari HP hanya:
 
 - judul dan artis lagu ke LRCLIB atau NetEase, kalau lirik online nyala;
 - permintaan ke layanan yang kamu sambungkan (Kulia, Todoist, Notion, tautan iCal);
-- model terjemahan ML Kit, diunduh sekali setelah kamu setujui;
+- model terjemahan ML Kit (varian Full), diunduh sekali setelah kamu setujui;
+- cek versi baru ke GitHub sekali sehari, kalau Beri tahu versi baru nyala;
 - data ke Tepi di laptop, terenkripsi AES dan ditandatangani HMAC, hanya di jaringan lokal.
 
 Layanan aksesibilitas tidak membaca isi layar. Ia hanya diberi tahu saat salah satu aplikasi bank di atas dibuka, lalu mematikan dirinya. Token dan sesi disimpan terenkripsi dengan Android Keystore. Rinciannya ada di Tepi › Tentang › Yang dibaca Tepi.
@@ -95,14 +106,14 @@ Layanan aksesibilitas tidak membaca isi layar. Ia hanya diberi tahu saat salah s
 Butuh JDK 21 dan Android SDK (platform 36).
 
 ```
-./gradlew assembleDebug
+./gradlew assembleLiteDebug
 ```
 
-APK ada di `app/build/outputs/apk/debug/`. Untuk menandatangani dengan kunci sendiri, isi `TEPI_STORE` dan `TEPI_STORE_PASSWORD` di `~/.gradle/gradle.properties`. Tanpa itu, Gradle memakai kunci debug.
+APK ada di `app/build/outputs/apk/lite/debug/`. Varian dengan terjemahan: `assembleFullDebug`. Untuk menandatangani dengan kunci sendiri, isi `TEPI_STORE` dan `TEPI_STORE_PASSWORD` di `~/.gradle/gradle.properties`. Tanpa itu, Gradle memakai kunci debug.
 
 ## Pustaka pihak ketiga
 
-- [ML Kit Translate](https://developers.google.com/ml-kit/language/translation) dan Language ID, untuk terjemahan di HP.
+- [ML Kit Translate](https://developers.google.com/ml-kit/language/translation) dan Language ID, untuk terjemahan di HP (varian Full saja).
 
 ## Lisensi
 

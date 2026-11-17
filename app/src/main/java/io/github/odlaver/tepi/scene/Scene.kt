@@ -21,6 +21,9 @@ interface Host {
     fun send(p: PendingIntent)
     fun haptic()
     fun input(hint: String, initial: String = "", done: (String) -> Unit)
+
+    // Re-read colours, e.g. cover accent
+    fun restyle() = Unit
 }
 
 // One activity the island can show

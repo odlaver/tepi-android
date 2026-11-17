@@ -43,11 +43,13 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
     fun changed() {
         val tr = media.track
         if (tr != null && prefs.str("music.pkg", "") != tr.pkg) prefs.set("music.pkg", tr.pkg)
+        // Accent follows the cover
+        if (ui.coverArt !== tr?.art) { ui.coverArt = tr?.art; host.restyle() }
         if (tr == null || tr.key != songKey) {
             song = null
             lyricIdx = -1
             songKey = tr?.key
-            if (tr != null && prefs.lyrics) {
+            if (tr != null && prefs.lyricsActive) {
                 val k = tr.key
                 lyrics.load(tr.title, tr.artist, tr.durationMs, prefs.lyricsOnline) { got ->
                     if (songKey == k) { song = got; host.refresh() }
@@ -96,7 +98,7 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
     }
 
     private fun currentLine(): String? {
-        if (!prefs.lyrics) return null
+        if (!prefs.lyricsActive) return null
         val s = song ?: return null
         if (lyricIdx < 0 || lyricIdx >= s.lines.size) return null
         return s.lines[lyricIdx].text.takeIf { it.isNotEmpty() }
@@ -143,7 +145,7 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
         ui.art(c, tr.art, tmp, a, 0.5f)
     }
 
-    private fun hasLyrics() = prefs.lyrics && song?.lines?.isNotEmpty() == true
+    private fun hasLyrics() = prefs.lyricsActive && song?.lines?.isNotEmpty() == true
 
     override fun panelHeight(w: Float): Float {
         if (media.track == null) return ui.dp(18f) + ui.s12 + ui.dp(36f) + ui.s12 + ui.btnH
@@ -180,7 +182,7 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
         ui.fill(c, tmp, ui.dp(2f), ui.fillStrong, a)
         if (dur > 0) {
             tmp.right = r.left + r.width() * (pos.toFloat() / dur).coerceIn(0f, 1f)
-            ui.fill(c, tmp, ui.dp(2f), ui.sub, a)
+            ui.fill(c, tmp, ui.dp(2f), ui.accent, a)
             ui.text(c, ui.clock(pos), ui.small, r.left, barY + ui.dp(18f), ui.dp(60f), a)
             ui.textEnd(c, ui.clock(dur), ui.small, r.right, barY + ui.dp(18f), a)
         }
@@ -243,7 +245,7 @@ class MusicScene(host: Host, private val media: Media, private val prefs: Prefs,
             val h = maxH * (0.2f + 0.8f * wave * level).coerceIn(0.2f, 1f)
             val x = cx - total / 2 + i * (w + gap)
             tmp.set(x, cy - h / 2, x + w, cy + h / 2)
-            ui.fill(c, tmp, w / 2, ui.ink, a)
+            ui.fill(c, tmp, w / 2, ui.accent, a)
         }
     }
 

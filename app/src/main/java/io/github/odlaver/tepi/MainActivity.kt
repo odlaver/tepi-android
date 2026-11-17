@@ -62,6 +62,8 @@ class MainActivity : Page() {
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) openLink(intent)
+        // First run: tour before permissions
+        if (savedInstanceState == null && !prefs.bool("tour.done", false)) startActivity(Intent(this, Tour::class.java))
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -116,14 +118,21 @@ class MainActivity : Page() {
         steps()
         label(getString(R.string.section_settings))
         val g = group()
-        for ((mode, title, detail, icon) in listOf(
-            Quad(Section.ISLAND, R.string.section_island, R.string.sec_island_sub, Icon.Layers),
+        // Same order as Tepi on Windows
+        for ((page, title, detail, icon) in listOf(
+            Quad(Pane.GENERAL, R.string.section_general, R.string.sec_general_sub, Icon.Gear),
+            Quad(Pane.LOOK, R.string.section_look, R.string.sec_look_sub, Icon.Drop),
+            Quad(Section.ISLAND, R.string.section_island, R.string.sec_island_sub2, Icon.Layers),
             Quad(Section.ACTIVITIES, R.string.section_activities, R.string.sec_activities_sub, Icon.Spark),
             Quad(Section.PRODUCTIVITY, R.string.section_productivity, R.string.sec_productivity_sub, Icon.Timer),
             Quad(Section.REMINDERS, R.string.section_reminders, R.string.sec_reminders_sub, Icon.Bell),
             Quad(Section.CONNECT, R.string.section_connect, R.string.sec_connect_sub, Icon.Link),
-            Quad(Section.ABOUT, R.string.section_about, R.string.sec_about_sub, Icon.Info),
-        )) row(g, getString(title), getString(detail), icon = icon) { startActivity(Intent(this, Section::class.java).putExtra(Section.MODE, mode)) }
+            Quad(Pane.A11Y, R.string.section_a11y, R.string.sec_a11y_sub, Icon.Hand),
+            Quad(Pane.ABOUT, R.string.section_about, R.string.sec_about_sub2, Icon.Info),
+        )) row(g, getString(title), getString(detail), icon = icon) {
+            val cls = if (page in PANES) Pane::class.java else Section::class.java
+            startActivity(Intent(this, cls).putExtra(Section.MODE, page))
+        }
         coffee()
     }
 
@@ -240,5 +249,6 @@ class MainActivity : Page() {
 
     companion object {
         const val COFFEE = "https://odlaver.github.io/tepi/#kopi"
+        private val PANES = setOf(Pane.GENERAL, Pane.LOOK, Pane.A11Y, Pane.ABOUT)
     }
 }

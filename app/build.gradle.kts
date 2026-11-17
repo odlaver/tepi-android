@@ -11,12 +11,23 @@ android {
 
     defaultConfig {
         applicationId = "io.github.odlaver.tepi"
-        minSdk = 29
+        minSdk = 26
         targetSdk = 36
         versionCode = 26
         versionName = "2.5.1"
-        // Modern phones only; keeps ML Kit's native code small
-        ndk { abiFilters += listOf("arm64-v8a") }
+    }
+
+    // Lite has no native code, runs anywhere
+    flavorDimensions += "tier"
+    productFlavors {
+        create("lite") {
+            dimension = "tier"
+            isDefault = true
+        }
+        create("full") {
+            dimension = "tier"
+            ndk { abiFilters += listOf("arm64-v8a") }
+        }
     }
 
     // Publisher key lives outside the repo
@@ -58,9 +69,9 @@ kotlin {
     }
 }
 
-// On-device translation; QR scanner runs inside Play services
+// Full adds on-device translation; QR scanner runs inside Play services
 dependencies {
-    implementation("com.google.mlkit:translate:17.0.3")
-    implementation("com.google.mlkit:language-id:17.0.6")
+    "fullImplementation"("com.google.mlkit:translate:17.0.3")
+    "fullImplementation"("com.google.mlkit:language-id:17.0.6")
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
 }

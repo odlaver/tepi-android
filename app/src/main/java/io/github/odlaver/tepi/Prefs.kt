@@ -48,8 +48,97 @@ class Prefs(context: Context) {
         get() = int("offset", 0)
         set(v) = set("offset", v)
 
+    // Look: idle shape, motion, material
+    var idleShape: String
+        get() = str("look.idle", "pill")
+        set(v) = set("look.idle", v)
+
+    var idleEyes: Boolean
+        get() = bool("look.eyes", false)
+        set(v) = set("look.eyes", v)
+
+    var motion: String
+        get() = str("look.motion", "spring")
+        set(v) = set("look.motion", v)
+
+    var material: String
+        get() = str("look.material", "solid")
+        set(v) = set("look.material", v)
+
+    // Percent, 60 to 100
+    var opacity: Int
+        get() = int("look.opacity", 100).coerceIn(60, 100)
+        set(v) = set("look.opacity", v)
+
+    var theme: String
+        get() = str("look.theme", "dark")
+        set(v) = set("look.theme", v)
+
+    var accent: String
+        get() = str("look.accent", "mono")
+        set(v) = set("look.accent", v)
+
+    var outline: Boolean
+        get() = bool("look.outline", false)
+        set(v) = set("look.outline", v)
+
+    var radiusDp: Int
+        get() = int("look.radius", 24)
+        set(v) = set("look.radius", v)
+
+    var widthDp: Int
+        get() = int("look.width", 380)
+        set(v) = set("look.width", v)
+
+    var panelStyle: String
+        get() = str("look.panel", "attached")
+        set(v) = set("look.panel", v)
+
+    // Follow the camera, or screen centre
+    var anchor: String
+        get() = str("look.anchor", "camera")
+        set(v) = set("look.anchor", v)
+
+    // Calibration, half-dp steps
+    var calX: Int
+        get() = int("cal.x", 0)
+        set(v) = set("cal.x", v)
+
+    var calY: Int
+        get() = if (sp.contains("cal.y")) int("cal.y", 0) else offsetDp * 2
+        set(v) = set("cal.y", v)
+
+    var calSize: Int
+        get() = int("cal.size", 0)
+        set(v) = set("cal.size", v)
+
+    var closeSec: Int
+        get() = int("look.close", 9)
+        set(v) = set("look.close", v)
+
+    var hideLandscape: Boolean
+        get() = bool("hide.landscape", false)
+        set(v) = set("hide.landscape", v)
+
+    var hideFullscreen: Boolean
+        get() = bool("hide.fullscreen", true)
+        set(v) = set("hide.fullscreen", v)
+
+    // Low-power: auto, on, off
+    var lowPower: String
+        get() = str("power.low", Power.AUTO)
+        set(v) = set("power.low", v)
+
+    // Lyrics unless low-power trims them
+    val lyricsActive get() = lyrics && !Power.low(this)
+
     companion object {
         const val OFFSET_MIN = -8
         const val OFFSET_MAX = 24
+        const val CAL_X = 80
+        const val CAL_Y_MIN = -16
+        const val CAL_Y_MAX = 48
+        const val CAL_SIZE_MIN = -12
+        const val CAL_SIZE_MAX = 24
     }
 }

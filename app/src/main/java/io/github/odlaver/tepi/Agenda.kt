@@ -23,7 +23,7 @@ class Agenda(context: Context, private val prefs: Prefs, private val changed: ()
     private val loop = object : Runnable {
         override fun run() {
             refresh()
-            main.postDelayed(this, if (error != null) 120_000L else 600_000L)
+            main.postDelayed(this, if (error != null) 120_000L else if (Power.low(prefs)) 1_200_000L else 600_000L)
         }
     }
 

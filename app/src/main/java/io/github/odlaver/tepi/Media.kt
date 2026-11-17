@@ -30,6 +30,9 @@ class Media(context: Context, private val listener: ComponentName, private val c
     private var artFor: MediaMetadata? = null
     private var artCache: Bitmap? = null
 
+    // Low-power: smaller cover
+    var small: () -> Boolean = { false }
+
     var track: Track? = null
         private set
     var playing = false
@@ -97,7 +100,7 @@ class Media(context: Context, private val listener: ComponentName, private val c
             ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
             ?: meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
         artCache = src?.let {
-            val side = 192
+            val side = if (small()) 112 else 192
             if (it.width <= side && it.height <= side) it
             else {
                 val k = side.toFloat() / maxOf(it.width, it.height)

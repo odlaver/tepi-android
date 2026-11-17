@@ -15,6 +15,7 @@ class Confirm : Activity() {
         val what = intent.getStringExtra(WHAT).orEmpty()
         val pc = Listener.instance?.pc
         if (id < 0 || pc == null) { finish(); return }
+        if (Build.VERSION.SDK_INT < 29) { lockScreen(what); return }
         val b = BiometricPrompt.Builder(this)
             .setTitle(getString(R.string.allow_title))
             .setSubtitle(what.take(120))
@@ -27,6 +28,24 @@ class Confirm : Activity() {
             }
             override fun onAuthenticationError(code: Int, msg: CharSequence?) = finish()
         })
+    }
+
+    // Android 8 and 9: system lock screen
+    @Suppress("DEPRECATION")
+    private fun lockScreen(what: String) {
+        val km = getSystemService(android.app.KeyguardManager::class.java)
+        val i = km.createConfirmDeviceCredentialIntent(getString(R.string.allow_title), what.take(120))
+        if (i == null) { finish(); return }
+        startActivityForResult(i, 1)
+    }
+
+    @Deprecated("Activity result")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        @Suppress("DEPRECATION")
+        super.onActivityResult(requestCode, resultCode, data)
+        val id = intent.getIntExtra(ID, -1)
+        if (requestCode == 1 && resultCode == RESULT_OK && id >= 0) Listener.instance?.pc?.decide(id, "allow")
+        finish()
     }
 
     companion object {

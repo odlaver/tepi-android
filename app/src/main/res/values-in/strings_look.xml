@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="section_general">Umum</string>
+    <string name="sec_general_sub">Bahasa, cadangan, tur</string>
+    <string name="section_look">Tampilan</string>
+    <string name="sec_look_sub">Bentuk saat diam, kaca, warna, panel</string>
+    <string name="section_a11y">Aksesibilitas</string>
+    <string name="sec_a11y_sub">Gaya gerak</string>
+    <string name="sec_island_sub2">Posisi, penyelaras kamera, gestur</string>
+    <string name="sec_about_sub2">Apa yang baru, kirim saran, pembuat</string>
+
+    <string name="idle_shape">Saat diam</string>
+    <string name="idle_pill">Pil di sekitar kamera</string>
+    <string name="idle_ring">Cincin baterai di sekitar kamera</string>
+    <string name="idle_hide">Sembunyi</string>
+    <string name="idle_eyes">Mata Tepi</string>
+    <string name="idle_eyes_sub">Dua mata di samping kamera yang sesekali berkedip</string>
+    <string name="look_island">Island</string>
+    <string name="theme">Tema</string>
+    <string name="theme_dark">Gelap</string>
+    <string name="theme_light">Terang</string>
+    <string name="theme_auto">Ikuti sistem</string>
+    <string name="material">Material</string>
+    <string name="material_solid">Pekat</string>
+    <string name="material_liquid">Kaca Liquid</string>
+    <string name="material_frost">Frost</string>
+    <string name="opacity">Kepekatan</string>
+    <string name="opacity_note">Di bawah kepekatan penuh, status bar terlihat menembus island.</string>
+    <string name="accent">Aksen</string>
+    <string name="accent_mono">Monokrom</string>
+    <string name="accent_cover">Dari sampul lagu</string>
+    <string name="accent_green">Hijau</string>
+    <string name="accent_blue">Biru</string>
+    <string name="accent_orange">Jingga</string>
+    <string name="accent_pink">Merah muda</string>
+    <string name="outline">Garis tepi tipis</string>
+    <string name="outline_sub">Island gelap tetap terlihat di layar gelap</string>
+    <string name="look_panel">Panel</string>
+    <string name="panel_style">Bentuk panel</string>
+    <string name="panel_attached">Tumbuh dari kamera</string>
+    <string name="panel_floating">Kartu mengambang</string>
+    <string name="panel_width">Lebar panel</string>
+    <string name="panel_radius">Sudut</string>
+    <string name="close_after">Menutup sendiri setelah</string>
+    <string name="t_sec_n">%1$d dtk</string>
+    <string name="look_reset">Kembalikan bawaan</string>
+    <string name="look_reset_done">Tampilan dikembalikan</string>
+
+    <string name="anchor">Posisi</string>
+    <string name="anchor_camera">Ikuti kamera</string>
+    <string name="anchor_center">Tengah layar</string>
+    <string name="calibrate">Penyelaras kamera</string>
+    <string name="calibrate_sub">Paskan island dengan kamera HP</string>
+    <string name="calibrate_note">Geser sampai lingkaran pas mengelilingi kamera. Kotak merah adalah posisi kamera menurut Android.</string>
+    <string name="calibrate_none">Android tidak melaporkan lubang kamera di HP ini, jadi Tepi menaruh island di tengah atas. Geser ke tempat yang kamu mau.</string>
+    <string name="cal_x">Kiri dan kanan</string>
+    <string name="cal_y">Atas dan bawah</string>
+    <string name="cal_size">Ukuran lensa</string>
+    <string name="cal_reset">Kembalikan posisi</string>
+    <string name="hide_landscape">Sembunyi saat landscape</string>
+    <string name="hide_landscape_sub">Panggilan dan timer tetap tampil</string>
+    <string name="hide_fullscreen">Sembunyi di aplikasi layar penuh</string>
+    <string name="hide_fullscreen_sub">Video dan game tidak terhalang</string>
+
+    <string name="motion">Gerak</string>
+    <string name="motion_spring">Pegas</string>
+    <string name="motion_smooth">Halus, tanpa pantulan</string>
+    <string name="motion_min">Minim</string>
+    <string name="motion_note">Kalau animasi dimatikan di opsi developer atau aksesibilitas Android, island berpindah tanpa gerak.</string>
+
+    <string name="language">Bahasa</string>
+    <string name="language_sub">Inggris atau Indonesia, diatur per aplikasi di Android</string>
+    <string name="backup">Cadangan pengaturan</string>
+    <string name="export_prefs">Ekspor pengaturan</string>
+    <string name="export_prefs_sub">Berkas JSON. Token, sesi, dan pasangan laptop tidak pernah ikut.</string>
+    <string name="import_prefs">Impor pengaturan</string>
+    <string name="import_prefs_sub">Hanya pengaturan Tepi yang dibaca dari berkas</string>
+    <string name="export_done">Pengaturan diekspor</string>
+    <string name="import_done">Pengaturan diimpor</string>
+    <string name="import_bad">Berkas itu bukan pengaturan Tepi</string>
+
+    <string name="whats_new">Apa yang baru</string>
+    <string name="whats_new_sub">Ringkasan Tepi %1$s</string>
+    <string name="tour">Tur Tepi</string>
+    <string name="tour_sub">Kenalan lagi dengan fitur utama Tepi</string>
+    <string name="tour_start">Mulai tur</string>
+    <string name="feedback">Kirim saran</string>
+    <string name="feedback_sub">Ide fitur atau masalah, langsung ke pembuat Tepi</string>
+    <string name="fb_idea">Saran fitur</string>
+    <string name="fb_problem">Ada masalah</string>
+    <string name="fb_other">Lainnya</string>
+    <string name="fb_text_hint">Apa yang mau kamu sampaikan?</string>
+    <string name="fb_contact_hint">Email atau Instagram, kalau mau dibalas</string>
+    <string name="fb_system">Sertakan versi Tepi dan model HP</string>
+    <string name="fb_send">Kirim</string>
+    <string name="fb_sent">Terkirim. Terima kasih</string>
+    <string name="fb_failed">Gagal terkirim, cek internet</string>
+    <string name="fb_rejected">Formulir menolak (%1$d)</string>
+    <string name="maker">Pembuat</string>
+    <string name="maker_role">Membuat dan merawat Tepi</string>
+    <string name="open_profile">Buka profil</string>
+    <string name="github_sub">Kode Tepi dan proyek lainnya</string>
+
+    <string name="tour_skip">Lewati</string>
+    <string name="tour_next">Lanjut</string>
+    <string name="tour_done">Mulai pakai Tepi</string>
+    <string name="tour1_title">Island di sekitar kamera</string>
+    <string name="tour1_body">Tepi duduk di kamera dan membesar saat ada yang terjadi: lagu, pesan, panggilan, unduhan, timer, atau waktu sholat.</string>
+    <string name="tour2_title">Ketuk, geser, tahan</string>
+    <string name="tour2_body">Ketuk island untuk membuka. Geser ke bawah untuk panel, ke atas untuk menutup, ke samping untuk pindah tab. Tahan untuk aksi cepat seperti timer, catatan, dan Mode bank.</string>
+    <string name="tour3_title">Atur sesukamu</string>
+    <string name="tour3_body">Pilih bentuk Tepi saat tidak ada apa-apa. Pilihan ini, kaca, dan warnanya bisa diganti nanti di Tampilan.</string>
+    <string name="tour4_title">Pas dengan kamera</string>
+    <string name="tour4_body">Kalau island tidak pas dengan kamera, buka Penyelaras kamera lalu geser sampai cocok.</string>
+    <string name="tour5_title">Nyambung ke laptop</string>
+    <string name="tour5_body">Bersama Tepi untuk Windows, jawab agent coding, salin kode, dan kirim berkas antara HP dan laptop. Sambungkan dari Integrasi, Laptop.</string>
+    <string name="tour6_title">Ringan sejak awal</string>
+    <string name="tour6_body">Tanpa akun, iklan, atau analitik. Tepi tidak menggambar apa pun saat diam dan hanya butuh izin di layar berikutnya.</string>
+    <string name="update_channel">Pembaruan Tepi</string>
+    <string name="update_tap">Ketuk untuk mengunduh APK baru</string>
+    <string name="update_notify">Beri tahu versi baru</string>
+    <string name="update_notify_sub">Cek GitHub sekali sehari, tampil di island dan panel notifikasi</string>
+    <string name="update_check">Cek pembaruan</string>
+    <string-array name="whats_new">
+        <item>Island tumbuh dari kamera dan kembali tanpa hilang mendadak</item>
+        <item>Pilih bentuk Tepi saat diam: pil di sekitar kamera, cincin baterai, atau sembunyi</item>
+        <item>Kaca Liquid dan Frost, kepekatan, tema, dan warna aksen, termasuk dari sampul lagu</item>
+        <item>Penyelaras kamera supaya island pas dengan kamera HP</item>
+        <item>Panel mengambang, lebar panel, sudut, dan lama panel terbuka</item>
+        <item>Gaya gerak: pegas, halus, atau minim</item>
+        <item>Tur untuk pemasangan baru, cadangan pengaturan, dan kirim saran langsung dari Tepi</item>
+    </string-array>
+</resources>

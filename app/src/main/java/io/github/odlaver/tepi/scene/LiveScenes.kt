@@ -47,7 +47,7 @@ private fun drawBell(c: Canvas, ui: io.github.odlaver.tepi.Ui, cx: Float, cy: Fl
     c.drawCircle(cx, cy + s * 0.38f, s * 0.1f, ui.solid)
     if (slash) {
         ui.stroke.strokeWidth = s * 0.12f
-        ui.stroke.color = Color.BLACK
+        ui.stroke.color = ui.surface
         c.drawLine(cx - s * 0.5f, cy - s * 0.5f, cx + s * 0.5f, cy + s * 0.5f, ui.stroke)
         ui.stroke.strokeWidth = s * 0.07f
         ui.stroke.color = ui.solid.color
@@ -189,8 +189,17 @@ abstract class LiveScene(host: Host, protected val live: Live, private val kind:
 class IncomingScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Incoming) {
     override val id = "incoming"
     override val priority = 96
-    override fun card() = true
-    override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {}
+    override fun card() = item()?.quiet != true
+    override fun wing() = (ui.compact.measureText(item()?.title ?: "") + ui.dp(12f)).coerceIn(ui.dp(40f), ui.dp(110f))
+
+    // Quiet: phone glyph and caller
+    override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {
+        val it = item() ?: return
+        val s = min(left.height(), ui.dp(20f))
+        ui.solid.color = ui.alpha(RING, a)
+        drawPhone(c, ui, left.left + s / 2, left.centerY(), s)
+        ui.textEnd(c, android.text.TextUtils.ellipsize(it.title, ui.compact, right.width(), android.text.TextUtils.TruncateAt.END), ui.compact, right.right, ui.baseline(ui.compact, right.centerY()), a)
+    }
     override fun panelHeight(w: Float) = ui.dp(40f) + ui.s12 + ui.btnH
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
@@ -212,6 +221,10 @@ class IncomingScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Inc
     }
 
     override fun describe() = item()?.let { "${host.ctx.getString(R.string.call_incoming)}: ${it.title}" } ?: ""
+
+    companion object {
+        private val RING = Color.rgb(52, 199, 89)
+    }
 }
 
 class CallScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Call) {
@@ -356,4 +369,85 @@ class ClockScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Clock)
     override fun panelHeight(w: Float) = 0f
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {}
     override fun describe() = item()?.let { "${it.title} ${ui.clock(elapsed(it))}" } ?: ""
+}
+
+// Android 16 Live Updates from any app
+class PromotedScene(host: Host, live: Live) : LiveScene(host, live, LiveKind.Promoted) {
+    override val id = "promoted"
+    override val priority = 50
+    override fun ticking() = item()?.let { it.chrono || it.indeterminate } == true
+
+    private fun frac(it: LiveItem) = if (it.max > 0) (it.progress.toFloat() / it.max).coerceIn(0f, 1f) else 0f
+
+    // Chip text, then clock, then percent
+    private fun chip(it: LiveItem): String = when {
+        it.short.isNotEmpty() -> it.short
+        it.chrono -> ui.clock(elapsed(it))
+        it.max > 0 && !it.indeterminate -> "${(frac(it) * 100).toInt()}%"
+        else -> ""
+    }
+
+    override fun wing(): Float {
+        val it = item() ?: return 0f
+        val t = chip(it)
+        return if (t.isEmpty()) ui.dp(28f) else (ui.compact.measureText(t) + ui.dp(14f)).coerceIn(ui.dp(40f), ui.dp(110f))
+    }
+
+    override fun drawCompact(c: Canvas, left: RectF, right: RectF, a: Float) {
+        val it = item() ?: return
+        val s = min(left.height(), ui.dp(22f))
+        tmp.set(left.left, left.centerY() - s / 2, left.left + s, left.centerY() + s / 2)
+        icon(c, it, tmp, a)
+        val t = chip(it)
+        if (t.isNotEmpty()) ui.textEnd(c, android.text.TextUtils.ellipsize(t, ui.compact, right.width(), android.text.TextUtils.TruncateAt.END), ui.compact, right.right, ui.baseline(ui.compact, right.centerY()), a)
+        else if (it.max > 0) {
+            val r = s / 2 - ui.dp(2f)
+            ui.ring(c, right.right - r - ui.dp(2f), right.centerY(), r, ui.dp(3f), frac(it), a)
+        }
+    }
+
+    override fun drawBubble(c: Canvas, r: RectF, a: Float) {
+        val it = item() ?: return
+        if (it.max > 0) ui.ring(c, r.centerX(), r.centerY(), r.width() * 0.28f, ui.dp(3f), frac(it), a)
+        else { tmp.set(r); tmp.inset(r.width() * 0.22f, r.height() * 0.22f); icon(c, it, tmp, a) }
+    }
+
+    override fun panelHeight(w: Float): Float {
+        val it = item() ?: return 0f
+        var h = ui.dp(40f)
+        if (it.max > 0 || it.indeterminate) h += ui.s12 + ui.dp(4f)
+        if (it.actions.isNotEmpty()) h += ui.s12 + ui.btnH
+        return h
+    }
+
+    override fun drawPanel(c: Canvas, r: RectF, a: Float) {
+        val it = item() ?: return
+        hits.clear()
+        tmp.set(r.left, r.top, r.left + ui.dp(40f), r.top + ui.dp(40f))
+        icon(c, it, tmp, a)
+        val tx = tmp.right + ui.s12
+        val t = chip(it)
+        val tw = if (t.isNotEmpty()) ui.label.measureText(t) + ui.s8 else 0f
+        ui.text(c, it.title, ui.title, tx, r.top + ui.dp(17f), r.right - tx - tw, a)
+        if (t.isNotEmpty()) ui.textEnd(c, t, ui.label, r.right, r.top + ui.dp(17f), a)
+        ui.text(c, it.text, ui.body, tx, r.top + ui.dp(34f), r.right - tx, a)
+        var y = r.top + ui.dp(40f)
+        if (it.max > 0 || it.indeterminate) {
+            y += ui.s12
+            val bar = RectF(r.left, y, r.right, y + ui.dp(4f))
+            ui.fill(c, bar, ui.dp(2f), ui.fillStrong, a)
+            if (!it.indeterminate) { bar.right = r.left + r.width() * frac(it); ui.fill(c, bar, ui.dp(2f), ui.ink, a) }
+            y += ui.dp(4f)
+        }
+        val acts = it.actions.take(2).map { act -> act.title.toString() to { try { act.actionIntent.send() } catch (_: Exception) { } } }
+        if (acts.isNotEmpty()) buttons(c, r, y + ui.s12, acts, a)
+    }
+
+    override fun tap(x: Float, y: Float): Boolean {
+        if (super.tap(x, y)) return true
+        item()?.intent?.let { host.send(it); host.collapse() }
+        return true
+    }
+
+    override fun describe() = item()?.let { "${it.title}. ${it.text} ${chip(it)}" } ?: ""
 }

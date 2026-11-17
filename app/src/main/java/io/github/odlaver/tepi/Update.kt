@@ -15,10 +15,17 @@ object Update {
             val tag = o.optString("tag_name")
             if (!tag.startsWith("v") || o.optBoolean("draft") || o.optBoolean("prerelease")) continue
             val assets = o.optJSONArray("assets") ?: continue
+            // Same flavour as installed, else any APK
+            val full = BuildConfig.FLAVOR == "full"
+            var pick: String? = null
             for (j in 0 until assets.length()) {
                 val a = assets.getJSONObject(j)
-                if (a.optString("name").endsWith(".apk")) return Release(tag.removePrefix("v"), a.optString("browser_download_url"), o.optString("html_url"))
+                val name = a.optString("name").lowercase()
+                if (!name.endsWith(".apk")) continue
+                if (pick == null || name.contains("full") == full) pick = a.optString("browser_download_url")
+                if (name.contains("full") == full) break
             }
+            if (pick != null) return Release(tag.removePrefix("v"), pick, o.optString("html_url"))
         }
         return null
     }
