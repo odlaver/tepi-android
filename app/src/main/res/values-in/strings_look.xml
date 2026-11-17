@@ -52,15 +52,16 @@
     <string name="calibrate">Penyelaras kamera</string>
     <string name="calibrate_sub">Paskan island dengan kamera HP</string>
     <string name="calibrate_note">Geser sampai lingkaran pas mengelilingi kamera. Kotak merah adalah posisi kamera menurut Android.</string>
-    <string name="calibrate_none">Android tidak melaporkan lubang kamera di HP ini, jadi Tepi menaruh island di tengah atas. Geser ke tempat yang kamu mau.</string>
+    <string name="calibrate_none">Android tidak melaporkan lubang kamera di HP ini, jadi island selalu di tengah atas. Kamu bisa menggesernya naik atau turun.</string>
     <string name="cal_x">Kiri dan kanan</string>
     <string name="cal_y">Atas dan bawah</string>
     <string name="cal_size">Ukuran lensa</string>
     <string name="cal_reset">Kembalikan posisi</string>
-    <string name="hide_landscape">Sembunyi saat landscape</string>
-    <string name="hide_landscape_sub">Panggilan dan timer tetap tampil</string>
+    <string name="hide_landscape">Sembunyi saat HP dimiringkan</string>
+    <string name="hide_landscape_sub">Tablet tidak terpengaruh. Panggilan masuk dan izin agen tetap tampil</string>
     <string name="hide_fullscreen">Sembunyi di aplikasi layar penuh</string>
-    <string name="hide_fullscreen_sub">Video dan game tidak terhalang</string>
+    <string name="hide_fullscreen_sub">Island hilang sepenuhnya selama video dan game. Panggilan masuk dan izin agen tetap tampil</string>
+    <string name="hide_fullscreen_locked">Butuh izin Tampil di atas aplikasi lain untuk mengenali layar penuh</string>
 
     <string name="motion">Gerak</string>
     <string name="motion_spring">Pegas</string>

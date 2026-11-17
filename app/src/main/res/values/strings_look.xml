@@ -52,15 +52,16 @@
     <string name="calibrate">Camera alignment</string>
     <string name="calibrate_sub">Line the island up with your camera</string>
     <string name="calibrate_note">Move the sliders until the circle sits exactly around the camera. The red box is where Android says the camera is.</string>
-    <string name="calibrate_none">Android reports no camera cutout on this phone, so Tepi places the island at the top centre. Move it where you like.</string>
+    <string name="calibrate_none">Android reports no camera cutout on this phone, so the island always sits at the top centre. You can move it up or down.</string>
     <string name="cal_x">Left and right</string>
     <string name="cal_y">Up and down</string>
     <string name="cal_size">Lens size</string>
     <string name="cal_reset">Reset alignment</string>
-    <string name="hide_landscape">Hide in landscape</string>
-    <string name="hide_landscape_sub">Calls and timers still show</string>
+    <string name="hide_landscape">Hide when the phone is sideways</string>
+    <string name="hide_landscape_sub">Tablets are not affected. Incoming calls and agent requests still show</string>
     <string name="hide_fullscreen">Hide in fullscreen apps</string>
-    <string name="hide_fullscreen_sub">Videos and games stay clear</string>
+    <string name="hide_fullscreen_sub">The island disappears completely during videos and games. Incoming calls and agent requests still show</string>
+    <string name="hide_fullscreen_locked">Needs Display over other apps to recognise fullscreen</string>
 
     <string name="motion">Motion</string>
     <string name="motion_spring">Springy</string>

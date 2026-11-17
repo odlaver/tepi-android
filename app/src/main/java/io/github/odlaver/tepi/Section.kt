@@ -46,7 +46,10 @@ class Section : Page() {
             startActivity(Intent(this, Pane::class.java).putExtra(MODE, Pane.CALIBRATE))
         }
         toggle(g, getString(R.string.hide_landscape), getString(R.string.hide_landscape_sub), prefs.hideLandscape, icon = Icon.Layers) { prefs.hideLandscape = it; changed() }
-        toggle(g, getString(R.string.hide_fullscreen), getString(R.string.hide_fullscreen_sub), prefs.hideFullscreen, icon = Icon.Hide) { prefs.hideFullscreen = it; changed() }
+        // Accessibility window alone cannot see the status bar
+        val sees = Access.instance == null || android.provider.Settings.canDrawOverlays(this)
+        toggle(g, getString(R.string.hide_fullscreen), getString(if (sees) R.string.hide_fullscreen_sub else R.string.hide_fullscreen_locked),
+            prefs.hideFullscreen, sees, Icon.Hide) { prefs.hideFullscreen = it; changed() }
         label(getString(R.string.gestures))
         val h = group()
         for ((t, d, i) in listOf(

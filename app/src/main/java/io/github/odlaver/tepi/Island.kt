@@ -15,6 +15,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PixelFormat
 import android.graphics.RectF
+import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -26,6 +27,7 @@ import android.view.Display
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.Surface
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -65,10 +67,12 @@ class Island(
     // Lock and unlock change what may be shown
     private val lockWatch = object : android.content.BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
+            dark = i.action == Intent.ACTION_SCREEN_OFF
             if (locked && opened?.personal == true) opened = null
             refresh()
         }
     }
+    private var dark = false
     private var listening = false
     private val wm = context.getSystemService(WindowManager::class.java)
     private val main = Handler(Looper.getMainLooper())
@@ -91,7 +95,7 @@ class Island(
     private val lp = WindowManager.LayoutParams(
         1, 1, type, baseFlags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT,
     ).apply {
-        gravity = Gravity.TOP or Gravity.START
+        gravity = Gravity.TOP or Gravity.LEFT
         title = "Tepi"
         if (Build.VERSION.SDK_INT >= 30) layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         else if (Build.VERSION.SDK_INT >= 28) layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -141,7 +145,17 @@ class Island(
     private var shownScene: Scene? = null
     private var shownKind = Kind.Hidden
     private var fullscreen = false
+    private var silenced = false
     private var hiddenUntil = 0L
+
+    // Camera on the current top edge
+    private var docked = true
+    private var turned = false
+    private var wideScreen = false
+    private var rotation = -1
+
+    // Phone on its side, not a landscape tablet
+    private val sideways get() = turned && wideScreen
     private var lastTouch = 0L
 
     private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
@@ -206,10 +220,38 @@ class Island(
         if (probeCtx != null && Settings.canDrawOverlays(context)) {
             val p = WindowManager.LayoutParams(1, 1, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE, PixelFormat.TRANSLUCENT)
-            p.gravity = Gravity.TOP or Gravity.START
+            p.gravity = Gravity.TOP or Gravity.LEFT
             try { probeCtx.getSystemService(WindowManager::class.java).addView(probe, p); probing = true } catch (_: Exception) { }
         }
+        if (Build.VERSION.SDK_INT < 30) watchSysUi(true)
+        rotation = screen.rotation
+        try { displays.registerDisplayListener(turnWatch, main) } catch (_: Exception) { }
         refresh()
+    }
+
+    // A 180° turn changes no configuration
+    private val displays = context.getSystemService(DisplayManager::class.java)
+    private val turnWatch = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(id: Int) = Unit
+        override fun onDisplayRemoved(id: Int) = Unit
+        override fun onDisplayChanged(id: Int) {
+            // Refresh-rate switches land here too
+            if (id != screen.displayId || !attached || screen.rotation == rotation) return
+            rotation = screen.rotation
+            measureScreen()
+            refresh()
+        }
+    }
+
+    // Android 8 to 10 have no inset visibility
+    @Suppress("DEPRECATION")
+    private val sysUi = View.OnSystemUiVisibilityChangeListener { v -> full(v and View.SYSTEM_UI_FLAG_FULLSCREEN != 0) }
+
+    @Suppress("DEPRECATION")
+    private fun watchSysUi(on: Boolean) {
+        val l = if (on) sysUi else null
+        if (type == WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY) setOnSystemUiVisibilityChangeListener(l)
+        if (probing) probe.setOnSystemUiVisibilityChangeListener(l)
     }
 
     fun detach() {
@@ -218,6 +260,8 @@ class Island(
         main.removeCallbacksAndMessages(null)
         Choreographer.getInstance().removeFrameCallback(frame)
         ticking = false
+        try { displays.unregisterDisplayListener(turnWatch) } catch (_: Exception) { }
+        if (Build.VERSION.SDK_INT < 30) watchSysUi(false)
         wm.removeView(this)
         if (listening) { try { context.applicationContext.unregisterReceiver(lockWatch) } catch (_: Exception) { }; listening = false }
         if (probing) { try { probeCtx?.getSystemService(WindowManager::class.java)?.removeView(probe) } catch (_: Exception) { }; probing = false }
@@ -332,7 +376,8 @@ class Island(
         val card = input ?: Input(context, type, ui).also { input = it }
         val w = min(screenW - ui.edge * 2, ui.panelMax)
         main.removeCallbacks(closePanel)
-        card.show(hint, initial, (hole.centerX() - w / 2).toInt(), (statusBottom + ui.s8).toInt(), w.toInt()) { text ->
+        val x = (hole.centerX() - w / 2).coerceIn(ui.edge, max(ui.edge, screenW - ui.edge - w))
+        card.show(hint, initial, x.toInt(), (statusBottom + ui.s8).toInt(), w.toInt()) { text ->
             armClose()
             done(text)
         }
@@ -368,6 +413,7 @@ class Island(
 
     override fun onConfigurationChanged(newConfig: Configuration?) {
         super.onConfigurationChanged(newConfig)
+        rotation = screen.rotation
         measureScreen()
         restyle()
         refresh()
@@ -383,9 +429,20 @@ class Island(
     // Status bar gone: a fullscreen app is up
     private fun sense(insets: WindowInsets) {
         if (Build.VERSION.SDK_INT < 30) return
-        val full = !insets.isVisible(WindowInsets.Type.statusBars())
-        if (full != fullscreen) { fullscreen = full; refresh() }
+        full(!insets.isVisible(WindowInsets.Type.statusBars()))
     }
+
+    // Hide at once; return only once the bar stays
+    private fun full(on: Boolean) {
+        main.removeCallbacks(back)
+        if (!on) { if (fullscreen) main.postDelayed(back, BACK_MS); return }
+        if (fullscreen) return
+        fullscreen = true
+        if (prefs.hideFullscreen) { opened = null; input?.close() }
+        refresh()
+    }
+
+    private val back = Runnable { fullscreen = false; refresh() }
 
     // Accessibility windows never see the status bar
     private val probe = object : View(probeCtx ?: context) {
@@ -401,7 +458,10 @@ class Island(
         val m = DisplayMetrics()
         screen.getRealMetrics(m)
         screenW = m.widthPixels.toFloat()
+        wideScreen = m.widthPixels > m.heightPixels
+        turned = screen.rotation != Surface.ROTATION_0
         val found = cameraRect()
+        docked = found != null
         if (found != null) {
             hole.set(found)
             // Bar down from the edge: a round hole inside
@@ -411,15 +471,17 @@ class Island(
                 hole.set(hole.centerX() - rr, cy - rr, hole.centerX() + rr, cy + rr)
             }
             sysHole.set(hole)
+            if (prefs.anchor == "center") hole.offset(screenW / 2 - hole.centerX(), 0f)
+            // Calibration in half-dp steps, real lens only
+            val grow = ui.dp(prefs.calSize / 4f)
+            hole.inset(-grow, -grow)
+            hole.offset(ui.dp(prefs.calX / 2f), ui.dp(prefs.calY / 2f))
         } else {
+            // Floating: dead centre, height still adjustable
             hole.set(screenW / 2 - ui.dp(10f), ui.dp(10f), screenW / 2 + ui.dp(10f), ui.dp(30f))
+            if (!turned) hole.offset(0f, ui.dp(prefs.calY / 2f))
             sysHole.setEmpty()
         }
-        if (prefs.anchor == "center") hole.offset(screenW / 2 - hole.centerX(), 0f)
-        // Calibration in half-dp steps
-        val grow = ui.dp(prefs.calSize / 4f)
-        hole.inset(-grow, -grow)
-        hole.offset(ui.dp(prefs.calX / 2f), ui.dp(prefs.calY / 2f))
         val pad = ui.dp(5f)
         pill.set(hole.left - pad, max(0f, hole.top - pad), hole.right + pad, hole.bottom + pad)
         if (pill.height() < ui.dp(30f)) pill.bottom = pill.top + ui.dp(30f)
@@ -434,13 +496,14 @@ class Island(
         if (rest.right > screenW - ui.dp(4f)) rest.offset(screenW - ui.dp(4f) - rest.right, 0f)
     }
 
-    // Top cutouts joined; path is tighter than boxes
+    // Cutout Android assigns to the top edge
+    // A corner lens turned sideways belongs to a side edge
     private fun cameraRect(): RectF? {
         if (Build.VERSION.SDK_INT < 28) return null
         val cut = (if (Build.VERSION.SDK_INT >= 29) screen.cutout else rootWindowInsets?.displayCutout) ?: return null
-        val band = ui.dp(80f)
         val out = RectF()
-        for (r in cut.boundingRects) if (!r.isEmpty && r.top < band) out.union(RectF(r))
+        if (Build.VERSION.SDK_INT >= 29) out.set(RectF(cut.boundingRectTop))
+        else if (cut.safeInsetTop > 0) for (r in cut.boundingRects) if (!r.isEmpty && r.top <= 0) out.union(RectF(r))
         if (out.isEmpty) return null
         if (Build.VERSION.SDK_INT >= 31) cut.cutoutPath?.let { p ->
             val b = RectF()
@@ -450,7 +513,6 @@ class Island(
         return out
     }
 
-    private val landscape get() = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     private val wide get() = min(screenW - ui.edge * 2, ui.panelMax)
 
     private fun choose() {
@@ -459,7 +521,8 @@ class Island(
         val lock = locked
         val live = scenes.filter { it.live() && !(lock && it.personal) }.sortedByDescending { it.priority }
         // The fullscreen probe goes dark under the lock screen; ignore it there
-        val quiet = (landscape && prefs.hideLandscape) || (fullscreen && !lock && prefs.hideFullscreen) || hiddenUntil > SystemClock.uptimeMillis() || (lock && !prefs.bool("lockscreen", true))
+        val quiet = (sideways && prefs.hideLandscape) || (fullscreen && !lock && prefs.hideFullscreen) || hiddenUntil > SystemClock.uptimeMillis() || (lock && !prefs.bool("lockscreen", true))
+        silenced = quiet
         val shown = if (quiet) live.filter { it.priority >= URGENT } else live
         val op = opened
         when {
@@ -474,7 +537,8 @@ class Island(
         }
     }
 
-    private fun compactWidth(s: Scene?) = pill.width() + max(s?.wing() ?: 0f, wingBase) * 2
+    // No lens to clear when floating
+    private fun compactWidth(s: Scene?) = (if (docked) pill.width() else ui.s12) + max(s?.wing() ?: 0f, wingBase) * 2
 
     // Open bouncy, close settled
     private fun tunes(open: Boolean): Tune = when {
@@ -490,7 +554,15 @@ class Island(
     // Animations off in system settings
     private fun systemStill() = !android.animation.ValueAnimator.areAnimatorsEnabled()
 
-    private val idleShape get() = if (calibrating) "pill" else prefs.idleShape
+    // Silenced or sideways: nothing at rest
+    // Floating has no lens to ring
+    private val idleShape get() = when {
+        calibrating -> "pill"
+        silenced -> "hide"
+        docked -> prefs.idleShape
+        sideways || prefs.idleShape != "pill" -> "hide"
+        else -> "pill"
+    }
     private val floating get() = prefs.panelStyle == "floating"
 
     // Recompute target, start motion
@@ -599,18 +671,26 @@ class Island(
         if (kind == Kind.Hidden && idleShape == "pill" && prefs.idleEyes && !minimal) main.postDelayed(blink, 4000L + (Math.random() * 3000).toLong())
     }
 
-    private fun hotspot() = prefs.cameraTap && (touchable || idleShape == "pill")
+    // Silenced: no invisible tap zone over games
+    private fun hotspot() = prefs.cameraTap && !silenced && (idleShape == "pill" || (touchable && docked))
 
     // Window covers the moving shape only
     private fun place(rect: RectF, touch: Boolean) {
         val grow = if (kind == Kind.Hidden && touch) ui.s8 else 0f
         val x = (rect.left - grow).toInt() - 2
         val y = max(0, (rect.top - grow).toInt() - 2)
-        lp.x = x
-        lp.y = y
-        lp.width = max(1, (rect.right + grow).toInt() + 2 - x)
-        lp.height = max(1, (rect.bottom + grow).toInt() + 2 - y)
-        lp.flags = baseFlags or if (touch) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        window(x, y, max(1, (rect.right + grow).toInt() + 2 - x), max(1, (rect.bottom + grow).toInt() + 2 - y), touch)
+    }
+
+    // Untouchable overlays still block touches on Android 12
+    // Nothing drawn: one pixel in the corner
+    private fun park() = window(0, 0, 1, 1, false)
+
+    // Each update is a call into the system
+    private fun window(x: Int, y: Int, w: Int, h: Int, touch: Boolean) {
+        val f = baseFlags or if (touch) 0 else WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        if (lp.x == x && lp.y == y && lp.width == w && lp.height == h && lp.flags == f) return
+        lp.x = x; lp.y = y; lp.width = w; lp.height = h; lp.flags = f
         if (attached) wm.updateViewLayout(this, lp)
     }
 
@@ -628,6 +708,8 @@ class Island(
     }
 
     private fun tick(ns: Long) {
+        // Screen off: resume from refresh on wake
+        if (dark) { ticking = false; return }
         val dt = if (lastNs == 0L) 1f / 60f else ((ns - lastNs) / 1e9f).coerceIn(0f, 1f / 20f)
         lastNs = ns
         var moving = false
@@ -667,7 +749,7 @@ class Island(
         if (kind == Kind.Hidden) when (idleShape) {
             "pill" -> place(rest, hotspot())
             "ring" -> place(if (hotspot()) RectF(pill).apply { union(ringBox()) } else ringBox(), hotspot())
-            else -> place(if (hotspot()) pill else hole, hotspot())
+            else -> if (hotspot()) place(pill, true) else park()
         }
         else {
             val rect = RectF(target)
@@ -751,7 +833,8 @@ class Island(
             sheen.alpha = (255 * a).toInt()
             c.drawPath(shape, sheen)
         }
-        if (material == "liquid" || material == "frost" || prefs.outline) {
+        // Floating: no camera hole to blend into
+        if (material == "liquid" || material == "frost" || prefs.outline || !docked) {
             rim.shader?.let { unit.setScale(1f, max(1f, now.height())); unit.postTranslate(0f, now.top); it.setLocalMatrix(unit) }
             rim.alpha = (255 * a).toInt()
             c.drawPath(shape, rim)
@@ -811,8 +894,10 @@ class Island(
         // Keep content off the rounded ends
         val inset = max(ui.dp(7f), (pill.height() - ui.dp(22f)) / 2)
         val side = max(inset, pill.height() * 0.42f)
-        zoneL.set(left + side, pill.top + inset, hole.left - ui.s12, pill.bottom - inset)
-        zoneR.set(hole.right + ui.s12, pill.top + inset, left + nk - side, pill.bottom - inset)
+        val gapL = if (docked) hole.left - ui.s12 else hole.centerX() - ui.s4
+        val gapR = if (docked) hole.right + ui.s12 else hole.centerX() + ui.s4
+        zoneL.set(left + side, pill.top + inset, gapL, pill.bottom - inset)
+        zoneR.set(gapR, pill.top + inset, left + nk - side, pill.bottom - inset)
     }
 
     // Neck and body joined by concave fillets
@@ -970,6 +1055,9 @@ class Island(
 
     companion object {
         const val URGENT = 95
+
+        // Swiping the bar down mid-game must not flash
+        private const val BACK_MS = 400L
         private val OPEN = Tune(300f, 25f)
         private val SMOOTH_OPEN = Tune(260f, 32.2f)
         private val CLOSE = Tune(420f, 41f)

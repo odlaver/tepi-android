@@ -152,12 +152,14 @@ class Pane : Page() {
 
     private fun calibrate() {
         header(getString(R.string.calibrate))
-        note(getString(if (hasCutout()) R.string.calibrate_note else R.string.calibrate_none))
+        val lens = hasCutout()
+        note(getString(if (lens) R.string.calibrate_note else R.string.calibrate_none))
         val g = group()
         val half = { v: Int -> (if (v > 0) "+" else "") + (if (v % 2 == 0) "${v / 2}" else "${v / 2.0}") + " dp" }
-        slider(g, getString(R.string.cal_x), -Prefs.CAL_X, Prefs.CAL_X, prefs.calX, half, Icon.Chevron) { prefs.calX = it; changed() }
+        // Without a lens the island stays centred
+        if (lens) slider(g, getString(R.string.cal_x), -Prefs.CAL_X, Prefs.CAL_X, prefs.calX, half, Icon.Chevron) { prefs.calX = it; changed() }
         slider(g, getString(R.string.cal_y), Prefs.CAL_Y_MIN, Prefs.CAL_Y_MAX, prefs.calY, half, Icon.Pin) { prefs.calY = it; changed() }
-        slider(g, getString(R.string.cal_size), Prefs.CAL_SIZE_MIN, Prefs.CAL_SIZE_MAX, prefs.calSize, half, Icon.Camera) { prefs.calSize = it; changed() }
+        if (lens) slider(g, getString(R.string.cal_size), Prefs.CAL_SIZE_MIN, Prefs.CAL_SIZE_MAX, prefs.calSize, half, Icon.Camera) { prefs.calSize = it; changed() }
         addButton(button(getString(R.string.cal_reset), false) {
             prefs.calX = 0; prefs.calY = 0; prefs.calSize = 0; prefs.offsetDp = 0
             changed(); rebuild()
@@ -166,7 +168,7 @@ class Pane : Page() {
 
     @Suppress("DEPRECATION")
     private fun hasCutout(): Boolean = when {
-        Build.VERSION.SDK_INT >= 29 -> windowManager.defaultDisplay.cutout?.boundingRects?.isNotEmpty() == true
+        Build.VERSION.SDK_INT >= 29 -> windowManager.defaultDisplay.cutout?.boundingRectTop?.isEmpty == false
         Build.VERSION.SDK_INT >= 28 -> window.decorView.rootWindowInsets?.displayCutout != null
         else -> false
     }

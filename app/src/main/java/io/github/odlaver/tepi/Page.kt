@@ -47,6 +47,12 @@ abstract class Page : Activity() {
             setPadding(dpi(24f), dpi(16f), dpi(24f), dpi(32f))
         }
         val scroll = ScrollView(this).apply { addView(col) }
+        // Tablets: one readable column in the middle
+        val side = dpi(24f)
+        scroll.addOnLayoutChangeListener { v, _, _, _, _, _, _, _, _ ->
+            val pad = side + maxOf(0, (v.width - v.paddingLeft - v.paddingRight - dpi(MAX_W)) / 2)
+            if (col.paddingLeft != pad) v.post { col.setPadding(pad, col.paddingTop, pad, col.paddingBottom) }
+        }
         scroll.setOnApplyWindowInsetsListener { v, insets ->
             if (Build.VERSION.SDK_INT >= 30) {
                 val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout() or WindowInsets.Type.ime())
@@ -272,4 +278,8 @@ abstract class Page : Activity() {
     )
 
     protected fun changed() = Listener.instance?.prefsChanged()
+
+    companion object {
+        private const val MAX_W = 600f
+    }
 }

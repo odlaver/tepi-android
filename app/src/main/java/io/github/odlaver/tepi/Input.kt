@@ -2,7 +2,6 @@ package io.github.odlaver.tepi
 
 import android.annotation.SuppressLint
 import android.content.Context
-import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.text.InputType
@@ -25,19 +24,16 @@ class Input(context: Context, private val type: Int, private val ui: Ui) : Linea
     private var done: ((String) -> Unit)? = null
     private val hint = TextView(context)
     private val field = EditText(context)
+    private lateinit var cancel: TextView
+    private lateinit var send: TextView
 
     init {
         orientation = VERTICAL
         val p = ui.s16.toInt()
         setPadding(ui.pad.toInt(), p, ui.pad.toInt(), p)
-        background = GradientDrawable().apply { setColor(Color.BLACK); cornerRadius = ui.radiusPanel }
-        hint.setTextColor(ui.sub)
         hint.textSize = 12f
         addView(hint)
-        field.setTextColor(ui.ink)
-        field.setHintTextColor(ui.faint)
         field.textSize = 14f
-        field.background = GradientDrawable().apply { setColor(ui.fill); cornerRadius = ui.radiusButton }
         field.setPadding(p, ui.s12.toInt(), p, ui.s12.toInt())
         field.inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_SENTENCES or InputType.TYPE_TEXT_FLAG_MULTI_LINE
         field.maxLines = 4
@@ -45,29 +41,46 @@ class Input(context: Context, private val type: Int, private val ui: Ui) : Linea
         field.setOnEditorActionListener { _, id, _ -> if (id == EditorInfo.IME_ACTION_SEND) { finish(true); true } else false }
         addView(field, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.s8.toInt() })
         val row = LinearLayout(context).apply { orientation = HORIZONTAL; gravity = Gravity.END }
-        row.addView(button(context.getString(R.string.cancel), false) { finish(false) })
-        row.addView(button(context.getString(R.string.send), true) { finish(true) },
-            LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.s8.toInt() })
+        cancel = button(context.getString(R.string.cancel)) { finish(false) }
+        send = button(context.getString(R.string.send)) { finish(true) }
+        row.addView(cancel)
+        row.addView(send, LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { marginStart = ui.s8.toInt() })
         addView(row, LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = ui.s12.toInt() })
     }
 
-    private fun button(label: String, primary: Boolean, onClick: () -> Unit) = TextView(context).apply {
+    private fun button(label: String, onClick: () -> Unit) = TextView(context).apply {
         text = label
         textSize = 13f
         typeface = android.graphics.Typeface.DEFAULT_BOLD
-        setTextColor(if (primary) Color.BLACK else ui.ink)
         gravity = Gravity.CENTER
-        minHeight = ui.btnH.toInt()
+        minHeight = ui.dp(44f).toInt()
         minWidth = ui.dp(72f).toInt()
         setPadding(ui.s16.toInt(), 0, ui.s16.toInt(), 0)
-        background = GradientDrawable().apply { setColor(if (primary) ui.ink else ui.fill); cornerRadius = ui.radiusButton }
         isFocusable = true
         setOnClickListener { onClick() }
+    }
+
+    // Theme can change between shows
+    private fun paint() {
+        background = GradientDrawable().apply {
+            setColor(ui.surface)
+            cornerRadius = ui.radiusPanel
+            setStroke(ui.dp(1f).toInt(), ui.line)
+        }
+        hint.setTextColor(ui.sub)
+        field.setTextColor(ui.ink)
+        field.setHintTextColor(ui.faint)
+        field.background = GradientDrawable().apply { setColor(ui.fill); cornerRadius = ui.radiusButton }
+        cancel.setTextColor(ui.ink)
+        cancel.background = GradientDrawable().apply { setColor(ui.fill); cornerRadius = ui.radiusButton }
+        send.setTextColor(ui.surface)
+        send.background = GradientDrawable().apply { setColor(ui.ink); cornerRadius = ui.radiusButton }
     }
 
     fun show(hintText: String, initial: String, x: Int, y: Int, width: Int, onDone: (String) -> Unit) {
         if (shown) finish(false)
         done = onDone
+        paint()
         hint.text = hintText
         field.setText(initial)
         field.setSelection(initial.length)
@@ -76,7 +89,7 @@ class Input(context: Context, private val type: Int, private val ui: Ui) : Linea
             WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
+            gravity = Gravity.TOP or Gravity.LEFT
             this.x = x
             this.y = y
             softInputMode = WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE or WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
