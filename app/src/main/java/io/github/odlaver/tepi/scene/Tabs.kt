@@ -78,7 +78,21 @@ class AgendaTab(host: Host, private val agenda: Agenda, private val connect: () 
     override val priority = 30
     override val order = 3
 
-    private fun today() = agenda.slots.filter { val c = Calendar.getInstance(); c.timeInMillis = it.start; c.get(Calendar.DAY_OF_YEAR) == Calendar.getInstance().get(Calendar.DAY_OF_YEAR) }.take(3)
+    // Recomputed when the list or the day changes
+    private var todayFor: Any? = null
+    private var todayDay = -1
+    private var todayList: List<io.github.odlaver.tepi.ClassSlot> = emptyList()
+
+    private fun today(): List<io.github.odlaver.tepi.ClassSlot> {
+        val now = Calendar.getInstance()
+        val d = now.get(Calendar.DAY_OF_YEAR)
+        if (agenda.slots === todayFor && d == todayDay) return todayList
+        val c = Calendar.getInstance()
+        todayList = agenda.slots.filter { c.timeInMillis = it.start; c.get(Calendar.DAY_OF_YEAR) == d && c.get(Calendar.YEAR) == now.get(Calendar.YEAR) }.take(3)
+        todayFor = agenda.slots
+        todayDay = d
+        return todayList
+    }
 
     override fun panelHeight(w: Float): Float {
         if (!agenda.any) return ui.dp(18f) + ui.s12 + ui.dp(36f) + ui.s12 + ui.btnH
@@ -131,7 +145,7 @@ class PrayerTab(host: Host, private val rem: Reminders, private val setup: () ->
         var y = head(c, r, Icon.Moon, host.ctx.getString(R.string.tab_prayer), if (rem.prayOn) city?.name else null, a)
         if (rem.prayOn && city != null) {
             // Five times in a row, next one lit
-            val times = Prayer.forDay(Calendar.getInstance(), city)
+            val times = Prayer.today(city)
             val (next, _) = Prayer.next(city)
             val idx = intArrayOf(0, 2, 3, 4, 5)
             val w = r.width() / idx.size

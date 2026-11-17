@@ -123,6 +123,9 @@ class Island(
     private val bodyA = Spring(1f, 0.004f, 700f, 53f)
     private val gap = Spring(0f, 0.3f)
     private val lid = Spring(1f, 0.01f, 900f, 50f)
+    private val shaped = arrayOf(l, t, r, b, rad, neck, split, radB, gap)
+    private val springs = arrayOf(l, t, r, b, rad, neck, split, radB, bubbleK, gap)
+    private val shapeKey = FloatArray(shaped.size + 1) { Float.NaN }
     private val rest = RectF()
     private val sysHole = RectF()
 
@@ -455,6 +458,7 @@ class Island(
 
     @Suppress("DEPRECATION")
     private fun measureScreen() {
+        shapeKey[0] = Float.NaN
         val m = DisplayMetrics()
         screen.getRealMetrics(m)
         screenW = m.widthPixels.toFloat()
@@ -625,7 +629,7 @@ class Island(
             pendingTune = null
             t.to(target.top, tune); b.to(target.bottom, tune); split.to(sy, tune)
         }
-        if (tune === SNAP) for (sp in arrayOf(l, t, r, b, rad, neck, split, radB, gap)) sp.snap(sp.target)
+        if (tune === SNAP) for (sp in shaped) sp.snap(sp.target)
         bubbleK.target = if (second != null) 1f else 0f
         val d = pill.height()
         bubble.set(target.right + ui.s8, pill.top, target.right + ui.s8 + d, pill.bottom)
@@ -641,7 +645,10 @@ class Island(
         union.union(l.value, t.value, r.value, b.value)
         if (second != null || bubbleK.value > 0.01f) union.union(bubble)
         if (kind == Kind.Hidden && idleShape == "ring") union.union(ringBox())
-        place(union, kind != Kind.Hidden || hotspot())
+        // Parked and still parked: leave the window alone
+        val resting = kind == Kind.Hidden && idleShape == "hide" && !hotspot() && bodyA.value < 0.01f &&
+            abs(l.value - target.left) < 0.5f && abs(r.value - target.right) < 0.5f && abs(t.value - target.top) < 0.5f && abs(b.value - target.bottom) < 0.5f
+        if (resting) park() else place(union, kind != Kind.Hidden || hotspot())
         kick()
     }
 
@@ -717,7 +724,7 @@ class Island(
             if (SystemClock.uptimeMillis() >= pendingAt) { t.to(pendingT[0], tu); b.to(pendingT[1], tu); pendingTune = null }
             moving = true
         }
-        for (s in arrayOf(l, t, r, b, rad, neck, split, radB, bubbleK, gap)) moving = s.step(dt) or moving
+        for (s in springs) moving = s.step(dt) or moving
         moving = contentA.step(dt) or moving
         if (contentA.value <= 0.05f && contentA.target == 0f && shownKey != wantedKey) {
             shownKey = wantedKey
@@ -736,8 +743,8 @@ class Island(
         if (op != null && op !in scenes) moving = op.step(dt) or moving
 
         val live = kind != Kind.Hidden && (primary?.ticking() == true || second?.ticking() == true)
-        // Live content at half rate
-        if (moving || !live || frameNo++ % 2 == 0) invalidate()
+        // Live content at half rate, quarter when saving
+        if (moving || !live || frameNo++ % (if (minimal) 4 else 2) == 0) invalidate()
         if (moving || live) Choreographer.getInstance().postFrameCallback(frame)
         else {
             ticking = false
@@ -766,9 +773,8 @@ class Island(
         getLocationOnScreen(loc)
         canvas.save()
         canvas.translate(-loc[0].toFloat(), -loc[1].toFloat())
-        buildShape(shape)
         val k = bubbleK.value.coerceIn(0f, 1f)
-        if (k > 0.01f) shape.addCircle(bubble.centerX(), bubble.centerY(), pill.height() / 2 * k, Path.Direction.CW)
+        reshape(k)
         if (body > 0.01f) paintBody(canvas, body)
         if (ring) drawRing(canvas, 1f - body)
         canvas.clipPath(shape)
@@ -898,6 +904,16 @@ class Island(
         val gapR = if (docked) hole.right + ui.s12 else hole.centerX() + ui.s4
         zoneL.set(left + side, pill.top + inset, gapL, pill.bottom - inset)
         zoneR.set(gapR, pill.top + inset, left + nk - side, pill.bottom - inset)
+    }
+
+    // Path.op is costly; still shapes reuse the last path
+    private fun reshape(k: Float) {
+        var same = shapeKey[shaped.size] == k
+        for (i in shaped.indices) if (shapeKey[i] != shaped[i].value) { shapeKey[i] = shaped[i].value; same = false }
+        if (same) return
+        shapeKey[shaped.size] = k
+        buildShape(shape)
+        if (k > 0.01f) shape.addCircle(bubble.centerX(), bubble.centerY(), pill.height() / 2 * k, Path.Direction.CW)
     }
 
     // Neck and body joined by concave fillets

@@ -124,7 +124,13 @@ class Lyrics(private val cacheDir: File) {
             try {
                 val code = c.responseCode
                 val stream = if (code in 200..299) c.inputStream else c.errorStream
-                val body = stream?.use { s -> s.readBytes().take(MAX_BODY).toByteArray().toString(Charsets.UTF_8) } ?: ""
+                val body = stream?.use { s ->
+                    // Stop reading at the cap
+                    val out = java.io.ByteArrayOutputStream()
+                    val buf = ByteArray(16 * 1024)
+                    while (out.size() < MAX_BODY) { val n = s.read(buf); if (n < 0) break; out.write(buf, 0, n) }
+                    out.toString("UTF-8")
+                } ?: ""
                 code to body
             } finally {
                 c.disconnect()

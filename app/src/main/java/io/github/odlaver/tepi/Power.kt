@@ -18,6 +18,11 @@ object Power {
     @Volatile private var saver = false
     @Volatile var screenOn = true
         private set
+    @Volatile var offAt = 0L
+        private set
+
+    // Off long enough that nobody is looking
+    fun idle(ms: Long) = !screenOn && android.os.SystemClock.elapsedRealtime() - offAt > ms
     private var listening = false
 
     // Small or Go phones
@@ -34,7 +39,7 @@ object Power {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
                 Intent.ACTION_SCREEN_ON -> screenOn = true
-                Intent.ACTION_SCREEN_OFF -> screenOn = false
+                Intent.ACTION_SCREEN_OFF -> { screenOn = false; offAt = android.os.SystemClock.elapsedRealtime() }
                 PowerManager.ACTION_POWER_SAVE_MODE_CHANGED -> saver = c.getSystemService(PowerManager::class.java).isPowerSaveMode
             }
             changed?.invoke()

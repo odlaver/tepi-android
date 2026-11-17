@@ -24,14 +24,22 @@ class Shelf(private val context: Context) {
     private val dir = File(context.filesDir, "shelf").apply { mkdirs() }
     private val sp = context.getSharedPreferences("shelf", Context.MODE_PRIVATE)
 
+    // Island draws this every frame; parse only on change
+    private var raw: String? = null
+    private var parsed: List<ShelfItem> = emptyList()
+
     fun all(): List<ShelfItem> {
-        val arr = try { JSONArray(sp.getString("items", "[]")) } catch (_: Exception) { JSONArray() }
-        return (0 until arr.length()).mapNotNull { i ->
+        val now = sp.getString("items", "[]")
+        if (now === raw) return parsed
+        val arr = try { JSONArray(now) } catch (_: Exception) { JSONArray() }
+        parsed = (0 until arr.length()).mapNotNull { i ->
             arr.optJSONObject(i)?.let { o ->
                 fun opt(k: String) = if (o.has(k)) o.optString(k) else null
                 ShelfItem(o.optLong("id"), opt("text"), opt("name"), opt("mime"), opt("file"))
             }
         }
+        raw = now
+        return parsed
     }
 
     fun addText(text: String) {

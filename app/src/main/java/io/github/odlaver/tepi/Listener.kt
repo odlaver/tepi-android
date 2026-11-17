@@ -484,8 +484,11 @@ class Listener : NotificationListenerService() {
         packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString()
     } catch (_: Exception) { pkg }
 
-    private fun appIcon(pkg: String): Bitmap? = try {
-        bitmap(packageManager.getApplicationIcon(pkg))
+    // Progress updates arrive many times a second
+    private val icons = android.util.LruCache<String, Bitmap>(24)
+
+    private fun appIcon(pkg: String): Bitmap? = icons.get(pkg) ?: try {
+        bitmap(packageManager.getApplicationIcon(pkg)).also { icons.put(pkg, it) }
     } catch (_: Exception) { null }
 
     private fun bitmap(d: Drawable): Bitmap {

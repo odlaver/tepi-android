@@ -18,6 +18,8 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
     private var warned = -1
     private var announced = -1
     private var prayDay = -1
+    private var prayCity: City? = null
+    private var times: LongArray? = null
     private var lastDrink = System.currentTimeMillis()
     private var lastEyes = System.currentTimeMillis()
     private var lastStretch = System.currentTimeMillis()
@@ -120,8 +122,9 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
         if (!prefs.bool("pray", false)) return
         val cal = Calendar.getInstance()
         val day = cal.get(Calendar.DAY_OF_YEAR)
-        if (day != prayDay) { prayDay = day; warned = -1; announced = -1 }
-        val times = Prayer.forDay(cal, c)
+        // Same day, same city: same times
+        if (day != prayDay || c !== prayCity) { prayDay = day; prayCity = c; warned = -1; announced = -1; times = Prayer.forDay(cal, c) }
+        val times = times ?: return
         val before = prefs.int("pray.before", 10).coerceAtLeast(0) * 60_000L
         for (i in 0 until 6) {
             if (i == 1) continue

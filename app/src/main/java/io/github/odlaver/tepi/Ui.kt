@@ -96,6 +96,11 @@ class Ui(context: Context) {
     val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeCap = Paint.Cap.ROUND }
     private val img = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
     private val shaderM = Matrix()
+
+    // Covers redraw every frame while playing
+    private val shaders = object : LinkedHashMap<Bitmap, BitmapShader>(8, 0.75f, true) {
+        override fun removeEldestEntry(e: MutableMap.MutableEntry<Bitmap, BitmapShader>) = size > 8
+    }
     private val glyph = Path()
     private val tmp = RectF()
 
@@ -163,7 +168,7 @@ class Ui(context: Context) {
             play(c, at.centerX(), at.centerY(), at.width() * 0.36f)
             return
         }
-        val shader = BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP)
+        val shader = shaders.getOrPut(art) { BitmapShader(art, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP) }
         val s = max(at.width() / art.width, at.height() / art.height)
         shaderM.setScale(s, s)
         shaderM.postTranslate(at.centerX() - art.width * s / 2, at.centerY() - art.height * s / 2)

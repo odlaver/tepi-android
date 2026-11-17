@@ -24,11 +24,29 @@ class Action(val label: String, val primary: Boolean = false, val icon: io.githu
 class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(host) {
     override val id = "home"
     val rows = ArrayList<HomeRow>()
-    private val placed = ArrayList<Pair<RectF, HomeRow>>()
-    private val hits = ArrayList<Pair<RectF, Action>>()
+    private val placed = ArrayList<HomeRow>()
+    private val boxes = ArrayList<RectF>()
+    private val hitActs = ArrayList<Action>()
+    private val hitBoxes = ArrayList<RectF>()
     private val tmp = RectF()
     private val time = DateFormat.getTimeInstance(DateFormat.SHORT)
     private val date = java.text.SimpleDateFormat("EEEE, d MMMM", java.util.Locale.getDefault())
+
+    // Text that changes once a minute
+    private var minute = -1L
+    private var timeText = ""
+    private var dateText = ""
+    private var greetText = ""
+
+    // Building actions makes lambdas; twice a second is plenty
+    private var acts: List<Action> = emptyList()
+    private var actsAt = -1L
+
+    private fun acts(): List<Action> {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (actsAt < 0 || now - actsAt > 500) { acts = actions(); actsAt = now }
+        return acts
+    }
 
     override fun live() = false
     override fun ticking() = true
@@ -38,10 +56,16 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
     private fun header() = ui.dp(52f)
 
     override fun panelHeight(w: Float): Float {
+        actsAt = -1
         var h = header()
         for (row in rows) if (shows(row)) h += ui.s8 + row.height(w - ui.s24) + ui.s20
-        if (actions().isNotEmpty()) h += ui.s12 + ui.btnH
+        if (acts().isNotEmpty()) h += ui.s12 + ui.btnH
         return h
+    }
+
+    private fun box(list: ArrayList<RectF>, i: Int): RectF {
+        while (list.size <= i) list.add(RectF())
+        return list[i]
     }
 
     private fun shows(row: HomeRow) = row.visible() && !(host.locked && row.personal())
@@ -58,39 +82,45 @@ class HomeScene(host: Host, private val actions: () -> List<Action>) : Scene(hos
     }
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
-        val now = Date()
-        ui.text(c, greeting(), ui.body, r.left, r.top + ui.dp(12f), r.width(), a)
-        ui.text(c, time.format(now), ui.big, r.left, r.top + ui.dp(44f), r.width() / 2, a)
-        ui.textEnd(c, date.format(now), ui.body, r.right, r.top + ui.dp(44f), a)
+        val m = System.currentTimeMillis() / 60_000L
+        if (m != minute) {
+            minute = m
+            val now = Date()
+            timeText = time.format(now); dateText = date.format(now); greetText = greeting()
+        }
+        ui.text(c, greetText, ui.body, r.left, r.top + ui.dp(12f), r.width(), a)
+        ui.text(c, timeText, ui.big, r.left, r.top + ui.dp(44f), r.width() / 2, a)
+        ui.textEnd(c, dateText, ui.body, r.right, r.top + ui.dp(44f), a)
         var y = r.top + header()
         placed.clear()
         for (row in rows) {
             if (!shows(row)) continue
             y += ui.s8
             val h = row.height(r.width() - ui.s24) + ui.s20
-            val box = RectF(r.left, y, r.right, y + h)
+            val box = box(boxes, placed.size).apply { set(r.left, y, r.right, y + h) }
             ui.fill(c, box, ui.radiusRow, ui.fill, a)
-            val inner = RectF(box.left + ui.s12, box.top + ui.dp(10f), box.right - ui.s12, box.bottom - ui.dp(10f))
-            row.draw(c, inner, a)
-            placed.add(box to row)
+            tmp.set(box.left + ui.s12, box.top + ui.dp(10f), box.right - ui.s12, box.bottom - ui.dp(10f))
+            row.draw(c, tmp, a)
+            placed.add(row)
             y += h
         }
-        hits.clear()
-        val acts = actions()
+        hitActs.clear()
+        val acts = acts()
         if (acts.isEmpty()) return
         y += ui.s12
         val gap = ui.s8
         val bw = (r.width() - gap * (acts.size - 1)) / acts.size
-        acts.forEachIndexed { i, act ->
-            val br = RectF(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH)
+        for (i in acts.indices) {
+            val act = acts[i]
+            val br = box(hitBoxes, i).apply { set(r.left + i * (bw + gap), y, r.left + i * (bw + gap) + bw, y + ui.btnH) }
             ui.button(c, br, act.label, a, act.primary, act.icon)
-            hits.add(br to act)
+            hitActs.add(act)
         }
     }
 
     override fun tap(x: Float, y: Float): Boolean {
-        for ((r, act) in hits) if (r.contains(x, y)) { host.haptic(); act.run(); return true }
-        for ((r, row) in placed) if (r.contains(x, y)) return row.tap(x, y)
+        for (i in hitActs.indices) if (hitBoxes[i].contains(x, y)) { host.haptic(); hitActs[i].run(); actsAt = -1; return true }
+        for (i in placed.indices) if (boxes[i].contains(x, y)) return placed[i].tap(x, y)
         return false
     }
 }
@@ -137,15 +167,19 @@ class MenuScene(host: Host, private val items: () -> List<Action>) : Scene(host)
 
     private val rowH get() = ui.dp(40f)
 
+    // Fresh when opened, then reused while drawing
+    private var list: List<Action> = emptyList()
+
     override fun panelHeight(w: Float): Float {
-        val n = items().size
+        list = items()
+        val n = list.size
         val rows = (n + 1) / 2
         return max(0, rows) * rowH + max(0, rows - 1) * ui.s8
     }
 
     override fun drawPanel(c: Canvas, r: RectF, a: Float) {
         hits.clear()
-        val list = items()
+        val list = list
         val gap = ui.s8
         val bw = (r.width() - gap) / 2
         list.forEachIndexed { i, act ->

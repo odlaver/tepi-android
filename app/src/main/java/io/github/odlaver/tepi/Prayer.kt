@@ -61,13 +61,32 @@ object Prayer {
         }
     }
 
+    // Panels draw these every frame; the sun moves daily
+    private var memoCity: City? = null
+    private var memoFrom = 0L
+    private var memoTo = 0L
+    private var memo = LongArray(6)
+    private var memoFajr = 0L
+
+    // Today's six times, recomputed after local midnight
+    fun today(c: City, nowMs: Long = System.currentTimeMillis()): LongArray {
+        if (c === memoCity && nowMs in memoFrom until memoTo) return memo
+        val day = Calendar.getInstance().apply { timeInMillis = nowMs }
+        memo = forDay(day, c)
+        memoFajr = forDay((day.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }, c)[0]
+        day.set(Calendar.HOUR_OF_DAY, 0); day.set(Calendar.MINUTE, 0); day.set(Calendar.SECOND, 0); day.set(Calendar.MILLISECOND, 0)
+        memoFrom = day.timeInMillis
+        day.add(Calendar.DAY_OF_MONTH, 1)
+        memoTo = day.timeInMillis
+        memoCity = c
+        return memo
+    }
+
     // Next alerted prayer index and time; skips Terbit
     fun next(c: City, nowMs: Long = System.currentTimeMillis()): Pair<Int, Long> {
-        val today = Calendar.getInstance()
-        val times = forDay(today, c)
+        val times = today(c, nowMs)
         for (i in 0 until 6) if (i != 1 && times[i] > nowMs) return i to times[i]
-        val tomorrow = (today.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 1) }
-        return 0 to forDay(tomorrow, c)[0]
+        return 0 to memoFajr
     }
 
     private fun julian(yy: Int, mm: Int, d: Int): Double {

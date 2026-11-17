@@ -196,6 +196,11 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
         var since = -1
         var fails = 0
         while (running) {
+            // Nothing can be shown; let Wi-Fi sleep
+            if (Power.idle(120_000L)) {
+                try { Thread.sleep(5000) } catch (_: InterruptedException) { break }
+                continue
+            }
             val k = key() ?: break
             val r = call(k, host, "/phone/events", JSONObject().put("since", since), 32000)
             if (r == null) {
@@ -232,10 +237,7 @@ class Pc(private val context: Context, private val vault: Vault, private val pre
     }
 
     fun decide(id: Int, decision: String) {
-        Thread {
-            val k = key() ?: return@Thread
-            call(k, host, "/phone/decide", JSONObject().put("id", id).put("decision", decision))
-        }.start()
+        out.execute { key()?.let { call(it, host, "/phone/decide", JSONObject().put("id", id).put("decision", decision)) } }
         asks = asks.filterNot { it.id == id }
         changed()
     }

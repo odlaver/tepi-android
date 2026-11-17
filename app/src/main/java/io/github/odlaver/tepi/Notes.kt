@@ -10,11 +10,20 @@ class Note(val text: String, val at: Long, val pinned: Boolean)
 class Notes(context: Context) {
     private val sp = context.getSharedPreferences("notes", Context.MODE_PRIVATE)
 
+    // Island draws this every frame; parse only on change
+    // Prefs hand back the same String until written
+    private var raw: String? = null
+    private var parsed: List<Note> = emptyList()
+
     fun all(): List<Note> {
-        val arr = try { JSONArray(sp.getString("list", "[]")) } catch (_: Exception) { JSONArray() }
-        return (0 until arr.length()).mapNotNull { i ->
+        val now = sp.getString("list", "[]")
+        if (now === raw) return parsed
+        val arr = try { JSONArray(now) } catch (_: Exception) { JSONArray() }
+        parsed = (0 until arr.length()).mapNotNull { i ->
             arr.optJSONObject(i)?.let { Note(it.optString("t"), it.optLong("at"), it.optBoolean("pin")) }
         }.sortedWith(compareByDescending<Note> { it.pinned }.thenByDescending { it.at })
+        raw = now
+        return parsed
     }
 
     fun add(text: String) {
