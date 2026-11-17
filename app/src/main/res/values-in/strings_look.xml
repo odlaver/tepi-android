@@ -25,7 +25,14 @@
     <string name="material_liquid">Kaca Liquid</string>
     <string name="material_frost">Frost</string>
     <string name="opacity">Kepekatan</string>
-    <string name="opacity_note">Di bawah kepekatan penuh, status bar terlihat menembus island.</string>
+    <string name="opacity_note">Kaca Liquid paling terasa di kepekatan 70 sampai 85%. Di bawah kepekatan penuh, status bar terlihat menembus island. Island terbuka sebentar setiap kali kamu mengubah tampilan, supaya hasilnya langsung terlihat.</string>
+    <string name="island_color">Warna island</string>
+    <string name="island_color_auto">Ikuti tema</string>
+    <string name="custom_color">Pilih sendiri</string>
+    <string name="pick_hue">Warna</string>
+    <string name="pick_sat">Kepekatan warna</string>
+    <string name="pick_light">Kecerahan</string>
+    <string name="pick_done">Pakai</string>
     <string name="accent">Aksen</string>
     <string name="accent_mono">Monokrom</string>
     <string name="accent_cover">Dari sampul lagu</string>
@@ -127,6 +134,12 @@
     <string name="update_notify_sub">Cek GitHub sekali sehari, tampil di island dan panel notifikasi</string>
     <string name="update_check">Cek pembaruan</string>
     <string-array name="whats_new">
+        <item>Saat HP dimiringkan dan di tablet, island melayang tepat di tengah atas</item>
+        <item>Selama video dan game layar penuh, island hilang sepenuhnya dan sentuhanmu sampai ke aplikasi. Pesan menunggu dan muncul bersama sesudahnya</item>
+        <item>Timer dan pengingat sholat berbunyi tepat waktu walau HP sedang tidur</item>
+        <item>Kode verifikasi muncul di island dengan tombol Salin</item>
+        <item>Island merespons sentuhan, dan tab bergeser mengikuti jari</item>
+        <item>Lebih hemat baterai: tidak menggambar saat layar mati, dan sambungan laptop istirahat setelah dua menit</item>
         <item>Island tumbuh dari kamera dan kembali tanpa hilang mendadak</item>
         <item>Pilih bentuk Tepi saat diam: pil di sekitar kamera, cincin baterai, atau sembunyi</item>
         <item>Kaca Liquid dan Frost, kepekatan, tema, dan warna aksen, termasuk dari sampul lagu</item>

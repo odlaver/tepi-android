@@ -78,6 +78,19 @@ class Prefs(context: Context) {
         get() = str("look.accent", "mono")
         set(v) = set("look.accent", v)
 
+    // Free colours: accent and island body
+    var accentColor: Int
+        get() = int("look.accent.color", android.graphics.Color.rgb(100, 170, 255))
+        set(v) = set("look.accent.color", v)
+
+    var tint: String
+        get() = str("look.tint", "auto")
+        set(v) = set("look.tint", v)
+
+    var tintColor: Int
+        get() = int("look.tint.color", android.graphics.Color.rgb(28, 28, 30))
+        set(v) = set("look.tint.color", v)
+
     var outline: Boolean
         get() = bool("look.outline", false)
         set(v) = set("look.outline", v)

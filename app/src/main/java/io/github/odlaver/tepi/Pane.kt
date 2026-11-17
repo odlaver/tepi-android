@@ -116,27 +116,41 @@ class Pane : Page() {
 
         label(getString(R.string.look_island))
         val g = group()
-        choice(g, getString(R.string.theme), listOf(
+        if (prefs.tint != "custom") choice(g, getString(R.string.theme), listOf(
             "dark" to getString(R.string.theme_dark), "light" to getString(R.string.theme_light), "auto" to getString(R.string.theme_auto),
-        ), prefs.theme, Icon.Moon) { prefs.theme = it; changed() }
+        ), prefs.theme, Icon.Moon) { prefs.theme = it; looked() }
+        choice(g, getString(R.string.island_color), listOf(
+            "auto" to getString(R.string.island_color_auto), "custom" to getString(R.string.custom_color),
+        ), prefs.tint, Icon.Drop) {
+            if (it == "custom") pickColor(getString(R.string.island_color), prefs.tintColor, ISLAND) { c -> prefs.tintColor = c; prefs.tint = "custom"; looked() }
+            else { prefs.tint = "auto"; looked() }
+        }
         choice(g, getString(R.string.material), listOf(
             "solid" to getString(R.string.material_solid), "liquid" to getString(R.string.material_liquid), "frost" to getString(R.string.material_frost),
-        ), prefs.material, Icon.Layers) { prefs.material = it; changed() }
-        slider(g, getString(R.string.opacity), 60, 100, prefs.opacity, { "$it%" }, Icon.Drop) { prefs.opacity = it; changed() }
+        ), prefs.material, Icon.Layers) {
+            // Glass needs to let some light through
+            if (it == "liquid" && prefs.material != "liquid" && prefs.opacity == 100) prefs.opacity = 80
+            prefs.material = it; looked()
+        }
+        slider(g, getString(R.string.opacity), 60, 100, prefs.opacity, { "$it%" }, Icon.Drop) { prefs.opacity = it; looked() }
         choice(g, getString(R.string.accent), listOf(
             "mono" to getString(R.string.accent_mono), "cover" to getString(R.string.accent_cover), "green" to getString(R.string.accent_green),
             "blue" to getString(R.string.accent_blue), "orange" to getString(R.string.accent_orange), "pink" to getString(R.string.accent_pink),
-        ), prefs.accent, Icon.Music) { prefs.accent = it; changed() }
-        if (prefs.material == "solid") toggle(g, getString(R.string.outline), getString(R.string.outline_sub), prefs.outline, icon = Icon.Eye) { prefs.outline = it; changed() }
+            "custom" to getString(R.string.custom_color),
+        ), prefs.accent, Icon.Music) {
+            if (it == "custom") pickColor(getString(R.string.accent), prefs.accentColor, ACCENT) { c -> prefs.accentColor = c; prefs.accent = "custom"; looked() }
+            else { prefs.accent = it; looked() }
+        }
+        if (prefs.material == "solid") toggle(g, getString(R.string.outline), getString(R.string.outline_sub), prefs.outline, icon = Icon.Eye) { prefs.outline = it; looked() }
         note(getString(R.string.opacity_note))
 
         label(getString(R.string.look_panel))
         val p = group()
         choice(p, getString(R.string.panel_style), listOf(
             "attached" to getString(R.string.panel_attached), "floating" to getString(R.string.panel_floating),
-        ), prefs.panelStyle, Icon.Layers) { prefs.panelStyle = it; changed() }
-        slider(p, getString(R.string.panel_width), 300, 420, prefs.widthDp, { "$it dp" }, Icon.Chevron) { prefs.widthDp = it; changed() }
-        slider(p, getString(R.string.panel_radius), 12, 36, prefs.radiusDp, { "$it dp" }, Icon.Layers) { prefs.radiusDp = it; changed() }
+        ), prefs.panelStyle, Icon.Layers) { prefs.panelStyle = it; looked() }
+        slider(p, getString(R.string.panel_width), 300, 420, prefs.widthDp, { "$it dp" }, Icon.Chevron) { prefs.widthDp = it; looked() }
+        slider(p, getString(R.string.panel_radius), 12, 36, prefs.radiusDp, { "$it dp" }, Icon.Layers) { prefs.radiusDp = it; looked() }
         choice(p, getString(R.string.close_after), listOf(5, 9, 15, 30).map { it to getString(R.string.t_sec_n, it) }, prefs.closeSec, Icon.Timer) { prefs.closeSec = it }
 
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
@@ -148,6 +162,75 @@ class Pane : Page() {
             changed(); toast(getString(R.string.look_reset_done)); rebuild()
         }, LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dpi(8f) })
         addButton(row)
+    }
+
+    // Hue, saturation, brightness; live on the island, Cancel restores
+    private fun pickColor(title: String, start: Int, presets: IntArray, apply: (Int) -> Unit) {
+        val hsv = FloatArray(3).also { android.graphics.Color.colorToHSV(start, it) }
+        val now = { android.graphics.Color.HSVToColor(hsv) }
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dpi(20f), dpi(8f), dpi(20f), 0) }
+        val swatch = android.view.View(this)
+        box.addView(swatch, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpi(48f)))
+        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        box.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpi(44f)).apply { topMargin = dpi(12f) })
+        val hue = colorBar(getString(R.string.pick_hue), 360)
+        val sat = colorBar(getString(R.string.pick_sat), 100)
+        val lit = colorBar(getString(R.string.pick_light), 100)
+        for ((t, b) in listOf(R.string.pick_hue to hue, R.string.pick_sat to sat, R.string.pick_light to lit)) {
+            box.addView(text(getString(t), 12f, sub).apply { setPadding(0, dpi(12f), 0, dpi(2f)) })
+            box.addView(b, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dpi(36f)))
+        }
+        // Tracks show where each bar leads
+        fun paint(fromBars: Boolean) {
+            val c = now()
+            swatch.background = android.graphics.drawable.GradientDrawable().apply { setColor(c); cornerRadius = dp(14f); setStroke(dpi(1f), withAlpha(ink, 40)) }
+            swatch.contentDescription = String.format("#%06X", c and 0xFFFFFF)
+            val full = android.graphics.Color.HSVToColor(floatArrayOf(hsv[0], 1f, 1f))
+            sat.progressDrawable = track(android.graphics.Color.HSVToColor(floatArrayOf(hsv[0], 0f, hsv[2])), android.graphics.Color.HSVToColor(floatArrayOf(hsv[0], 1f, hsv[2])))
+            lit.progressDrawable = track(android.graphics.Color.BLACK, android.graphics.Color.HSVToColor(floatArrayOf(hsv[0], hsv[1], 1f)))
+            if (!fromBars) { hue.progress = hsv[0].toInt(); sat.progress = (hsv[1] * 100).toInt(); lit.progress = (hsv[2] * 100).toInt() }
+            hue.thumbTintList = android.content.res.ColorStateList.valueOf(full)
+            apply(c)
+        }
+        hue.progressDrawable = track(*IntArray(7) { android.graphics.Color.HSVToColor(floatArrayOf(it * 60f, 1f, 1f)) })
+        val moved = object : android.widget.SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(s: android.widget.SeekBar, p: Int, fromUser: Boolean) {
+                if (!fromUser) return
+                when (s) { hue -> hsv[0] = p.toFloat(); sat -> hsv[1] = p / 100f; else -> hsv[2] = p / 100f }
+                paint(true)
+            }
+            override fun onStartTrackingTouch(s: android.widget.SeekBar) = Unit
+            override fun onStopTrackingTouch(s: android.widget.SeekBar) = Unit
+        }
+        for (b in arrayOf(hue, sat, lit)) b.setOnSeekBarChangeListener(moved)
+        // Full-height cell for the tap, small dot inside
+        for (c in presets) row.addView(android.widget.FrameLayout(this).apply {
+            contentDescription = String.format("#%06X", c and 0xFFFFFF)
+            isFocusable = true
+            background = ripple(null)
+            setOnClickListener { android.graphics.Color.colorToHSV(c, hsv); paint(false) }
+            addView(android.view.View(context).apply {
+                background = android.graphics.drawable.GradientDrawable().apply { shape = android.graphics.drawable.GradientDrawable.OVAL; setColor(c); setStroke(dpi(1f), withAlpha(ink, 50)) }
+            }, android.widget.FrameLayout.LayoutParams(dpi(28f), dpi(28f), android.view.Gravity.CENTER))
+        }, LinearLayout.LayoutParams(0, dpi(44f), 1f))
+        paint(false)
+        AlertDialog.Builder(this).setTitle(title).setView(box)
+            .setPositiveButton(R.string.pick_done) { _, _ -> rebuild() }
+            .setNegativeButton(R.string.cancel) { _, _ -> apply(start); rebuild() }
+            .setOnCancelListener { apply(start); rebuild() }
+            .show()
+    }
+
+    private fun colorBar(name: String, top: Int) = android.widget.SeekBar(this).apply {
+        max = top
+        contentDescription = name
+        splitTrack = false
+        setPadding(dpi(12f), 0, dpi(12f), 0)
+    }
+
+    private fun track(vararg colors: Int) = android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT, colors).apply {
+        cornerRadius = dp(6f)
+        setSize(0, dpi(12f))
     }
 
     private fun calibrate() {
@@ -268,6 +351,15 @@ class Pane : Page() {
         const val CALIBRATE = "calibrate"
         const val A11Y = "a11y"
         const val ABOUT = "about"
+        // Island bodies: near-black, deep tones, two light ones
+        private val ISLAND = intArrayOf(
+            0xFF000000.toInt(), 0xFF1C1C1E.toInt(), 0xFF101830.toInt(), 0xFF0E281E.toInt(),
+            0xFF3C101C.toInt(), 0xFF2A1A40.toInt(), 0xFFF8F8FA.toInt(), 0xFFECE4D6.toInt(),
+        )
+        private val ACCENT = intArrayOf(
+            0xFF30D158.toInt(), 0xFF64AAFF.toInt(), 0xFFFFAA3C.toInt(), 0xFFFF78AA.toInt(),
+            0xFFBF5AF2.toInt(), 0xFF40C8E0.toInt(), 0xFFFFD60A.toInt(), 0xFFFF453A.toInt(),
+        )
         private const val EXPORT = 41
         private const val IMPORT = 42
 

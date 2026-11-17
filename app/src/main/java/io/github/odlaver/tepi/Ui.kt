@@ -81,14 +81,17 @@ class Ui(context: Context) {
         return Color.HSVToColor(hsv)
     }
 
-    val title = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(14f); typeface = Typeface.DEFAULT_BOLD }
+    // Semibold for text, bold kept for big numbers
+    private val semi: Typeface = if (android.os.Build.VERSION.SDK_INT >= 28) Typeface.create(Typeface.DEFAULT, 600, false) else Typeface.DEFAULT_BOLD
+
+    val title = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(14f); typeface = semi }
     val body = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = sub; textSize = sp(12f) }
     val bodyInk = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f) }
     val small = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = faint; textSize = sp(10f); fontFeatureSettings = "tnum" }
-    val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f); typeface = Typeface.DEFAULT_BOLD }
-    val labelDark = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = sp(12f); typeface = Typeface.DEFAULT_BOLD }
-    val compact = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f); typeface = Typeface.DEFAULT_BOLD; fontFeatureSettings = "tnum" }
-    val lyric = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12.5f); typeface = Typeface.DEFAULT_BOLD }
+    val label = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f); typeface = semi }
+    val labelDark = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = sp(12f); typeface = semi }
+    val compact = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12f); typeface = semi; fontFeatureSettings = "tnum" }
+    val lyric = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(12.5f); typeface = semi }
     val big = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(26f); typeface = Typeface.DEFAULT_BOLD; fontFeatureSettings = "tnum" }
     val heading = TextPaint(Paint.ANTI_ALIAS_FLAG).apply { color = ink; textSize = sp(16f); typeface = Typeface.DEFAULT_BOLD }
 
@@ -123,6 +126,26 @@ class Ui(context: Context) {
         labelDark.color = surface
         panelMax = dp(panelWidthDp.toFloat())
         radiusPanel = dp(radiusDp.toFloat())
+    }
+
+    // WCAG contrast ratio between two colours
+    fun contrast(a: Int, b: Int): Float {
+        val la = Color.luminance(a) + 0.05f
+        val lb = Color.luminance(b) + 0.05f
+        return max(la, lb) / min(la, lb)
+    }
+
+    // Shift brightness until it reads on the surface
+    fun readable(c: Int, on: Int, need: Float = 3f): Int {
+        val hsv = FloatArray(3).also { Color.colorToHSV(c, it) }
+        val up = Color.luminance(on) < 0.18f
+        repeat(30) {
+            val now = Color.HSVToColor(hsv)
+            if (contrast(now, on) >= need) return now
+            if (up) { if (hsv[2] < 1f) hsv[2] = min(1f, hsv[2] + 0.05f) else hsv[1] = max(0f, hsv[1] - 0.05f) }
+            else hsv[2] = max(0f, hsv[2] - 0.05f)
+        }
+        return Color.HSVToColor(hsv)
     }
 
     fun alpha(color: Int, a: Float) = Color.argb((Color.alpha(color) * a).toInt().coerceIn(0, 255), Color.red(color), Color.green(color), Color.blue(color))

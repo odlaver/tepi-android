@@ -123,6 +123,8 @@ class Island(
     private val bodyA = Spring(1f, 0.004f, 700f, 53f)
     private val gap = Spring(0f, 0.3f)
     private val lid = Spring(1f, 0.01f, 900f, 50f)
+    private val press = Spring(1f, 0.001f, 900f, 48f)
+    private var slideDir = 0
     private val shaped = arrayOf(l, t, r, b, rad, neck, split, radB, gap)
     private val springs = arrayOf(l, t, r, b, rad, neck, split, radB, bubbleK, gap)
     private val shapeKey = FloatArray(shaped.size + 1) { Float.NaN }
@@ -164,6 +166,7 @@ class Island(
     private val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK }
     private val sheen = Paint(Paint.ANTI_ALIAS_FLAG)
     private val rim = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
+    private val glow = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
     private val unit = Matrix()
     private var material = ""
 
@@ -297,6 +300,13 @@ class Island(
         refresh()
     }
 
+    // Look only: skip the lyric reload, show the result
+    fun lookChanged() {
+        measureScreen()
+        restyle()
+        if (opened == null) openHome() else { lastTouch = SystemClock.uptimeMillis(); armClose(); refresh() }
+    }
+
     // Ring only: battery broadcasts otherwise unneeded
     private fun watchBattery() {
         val want = prefs.idleShape == "ring"
@@ -317,9 +327,13 @@ class Island(
     // Theme, material, and accent into Ui
     override fun restyle() {
         val night = (resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
-        val dark = when (prefs.theme) { "light" -> false; "auto" -> night; else -> true }
+        // Custom body colour picks its own ink
+        val tinted = prefs.tint == "custom"
+        // 0.18: white and black text read equally well
+        val dark = if (tinted) Color.luminance(prefs.tintColor) < 0.18f else when (prefs.theme) { "light" -> false; "auto" -> night; else -> true }
         material = prefs.material
         val base = when {
+            tinted -> prefs.tintColor or 0xFF000000.toInt()
             material == "frost" && dark -> Color.rgb(46, 46, 50)
             material == "frost" -> Color.rgb(226, 226, 230)
             dark -> Color.BLACK
@@ -332,20 +346,30 @@ class Island(
             "blue" -> if (dark) Color.rgb(100, 170, 255) else Color.rgb(0, 88, 208)
             "orange" -> if (dark) Color.rgb(255, 170, 60) else Color.rgb(178, 80, 0)
             "pink" -> if (dark) Color.rgb(255, 120, 170) else Color.rgb(196, 30, 100)
+            "custom" -> ui.readable(prefs.accentColor, base)
             else -> ui.ink
         }
         ui.accent = acc
         bg.color = base
         bg.alpha = prefs.opacity * 255 / 100
-        // Glass highlight in unit space
-        val hi = if (dark) Color.argb(46, 255, 255, 255) else Color.argb(150, 255, 255, 255)
-        sheen.shader = if (material == "liquid") LinearGradient(0f, 0f, 0f, 1f, intArrayOf(hi, Color.TRANSPARENT), floatArrayOf(0f, 0.45f), Shader.TileMode.CLAMP) else null
+        // Liquid: top light, faint bounce at the bottom
+        val hi = if (dark) Color.argb(52, 255, 255, 255) else Color.argb(150, 255, 255, 255)
+        val bounce = if (dark) Color.argb(16, 255, 255, 255) else Color.argb(60, 255, 255, 255)
+        sheen.shader = if (material == "liquid") LinearGradient(0f, 0f, 0f, 1f, intArrayOf(hi, Color.TRANSPARENT, Color.TRANSPARENT, bounce),
+            floatArrayOf(0f, 0.42f, 0.78f, 1f), Shader.TileMode.CLAMP) else null
         rim.strokeWidth = ui.dp(1f)
+        // Specular edge: bright corner, quiet sides, softer far corner
         rim.shader = when {
-            material == "liquid" -> LinearGradient(0f, 0f, 0f, 1f, intArrayOf(if (dark) Color.argb(90, 255, 255, 255) else Color.argb(200, 255, 255, 255),
-                if (dark) Color.argb(14, 255, 255, 255) else Color.argb(30, 0, 0, 0)), null, Shader.TileMode.CLAMP)
+            material == "liquid" -> LinearGradient(0f, 0f, 1f, 1f, intArrayOf(
+                if (dark) Color.argb(170, 255, 255, 255) else Color.argb(240, 255, 255, 255),
+                if (dark) Color.argb(16, 255, 255, 255) else Color.argb(28, 0, 0, 0),
+                if (dark) Color.argb(16, 255, 255, 255) else Color.argb(28, 0, 0, 0),
+                if (dark) Color.argb(80, 255, 255, 255) else Color.argb(170, 255, 255, 255),
+            ), floatArrayOf(0f, 0.32f, 0.7f, 1f), Shader.TileMode.CLAMP)
             else -> null
         }
+        glow.strokeWidth = ui.dp(4f)
+        glow.shader = rim.shader
         rim.color = if (dark) Color.argb(if (material == "frost") 40 else 46, 255, 255, 255) else Color.argb(36, 0, 0, 0)
         invalidate()
     }
@@ -354,6 +378,7 @@ class Island(
 
     // Host
     override fun expand(scene: Scene) {
+        slideDir = 0
         opened = scene
         lastTouch = SystemClock.uptimeMillis()
         armClose()
@@ -753,6 +778,8 @@ class Island(
         if (kind == Kind.Hidden && idleShape != "pill") bodyA.to(if (r.value - l.value < hole.width() * 1.25f) 0f else 1f, FADE_LENS)
         moving = bodyA.step(dt) or moving
         moving = lid.step(dt) or moving
+        moving = press.step(dt) or moving
+        if (contentA.target == 1f && contentA.value > 0.99f) slideDir = 0
         for (s in scenes) moving = s.step(dt) or moving
         val op = opened
         if (op != null && op !in scenes) moving = op.step(dt) or moving
@@ -788,6 +815,9 @@ class Island(
         getLocationOnScreen(loc)
         canvas.save()
         canvas.translate(-loc[0].toFloat(), -loc[1].toFloat())
+        // Pressed: the whole island gives a little
+        val p = press.value
+        if (p < 0.999f) canvas.scale(p, p, now.centerX(), pill.centerY())
         val k = bubbleK.value.coerceIn(0f, 1f)
         reshape(k)
         if (body > 0.01f) paintBody(canvas, body)
@@ -815,7 +845,11 @@ class Island(
                     val dots = if (list.size > 1) ui.dp(18f) else 0f
                     val g = gap.value
                     content.set(target.left + ui.pad, statusBottom + g + ui.s16, target.right - ui.pad, target.bottom - ui.pad - dots)
+                    // Tabs follow the finger: old leaves, new arrives
+                    val off = if (slideDir == 0 || minimal) 0f else slideDir * (1f - a) * ui.s24 * (if (contentA.target == 0f) -1f else 1f)
+                    canvas.translate(off, 0f)
                     s.drawPanel(canvas, content, a)
+                    canvas.translate(-off, 0f)
                     // Page dots: which tab, and that there are more
                     if (list.size > 1) {
                         val r = ui.dp(3f)
@@ -856,7 +890,15 @@ class Island(
         }
         // Floating: no camera hole to blend into
         if (material == "liquid" || material == "frost" || prefs.outline || !docked) {
-            rim.shader?.let { unit.setScale(1f, max(1f, now.height())); unit.postTranslate(0f, now.top); it.setLocalMatrix(unit) }
+            rim.shader?.let { unit.setScale(max(1f, now.width()), max(1f, now.height())); unit.postTranslate(now.left, now.top); it.setLocalMatrix(unit) }
+            // Inner half of a wide stroke: light inside the glass
+            if (material == "liquid") {
+                c.save()
+                c.clipPath(shape)
+                glow.alpha = (90 * a).toInt()
+                c.drawPath(shape, glow)
+                c.restore()
+            }
             rim.alpha = (255 * a).toInt()
             c.drawPath(shape, rim)
         }
@@ -1011,9 +1053,10 @@ class Island(
                 pressed = true
                 acted = false
                 main.postDelayed(longPress, 500)
+                if (!minimal) { press.to(PRESSED, PRESS); kick() }
             }
             MotionEvent.ACTION_MOVE -> {
-                if (!pressed || acted) return true
+                if (!pressed || acted) { release(); return true }
                 val dx = e.rawX - downX
                 val dy = e.rawY - downY
                 val slop = ui.dp(24f)
@@ -1025,18 +1068,33 @@ class Island(
             }
             MotionEvent.ACTION_UP -> {
                 main.removeCallbacks(longPress)
+                release()
                 if (pressed && !acted && hypot(e.rawX - downX, e.rawY - downY) < ui.dp(12f)) tap(e.rawX, e.rawY)
                 pressed = false
             }
             MotionEvent.ACTION_CANCEL -> {
                 main.removeCallbacks(longPress)
+                release()
                 pressed = false
             }
         }
         return true
     }
 
+    private fun release() {
+        if (press.target == 1f) return
+        press.to(1f, OPEN)
+        kick()
+    }
+
+    // Open and dismiss feel different on Android 11
+    private fun buzz(open: Boolean) {
+        if (Build.VERSION.SDK_INT >= 30) performHapticFeedback(if (open) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.GESTURE_END)
+        else haptic()
+    }
+
     private fun swipeDown() {
+        if (kind != Kind.Panel) buzz(true)
         when (kind) {
             Kind.Hidden -> openHome()
             Kind.Compact -> primary?.let { expand(it) }
@@ -1045,6 +1103,7 @@ class Island(
     }
 
     private fun swipeUp() {
+        if (kind != Kind.Hidden) buzz(false)
         when (kind) {
             Kind.Panel -> if (opened != null) collapse() else primary?.dismiss()
             Kind.Compact -> primary?.dismiss()
@@ -1065,6 +1124,7 @@ class Island(
         if (next < 0 || next >= list.size) return
         haptic()
         expand(list[next])
+        slideDir = dir
     }
 
     private fun tap(x: Float, y: Float) {
@@ -1098,5 +1158,7 @@ class Island(
         private val FADE_OUT = Tune(900f, 60f)
         private val FADE_LENS = Tune(700f, 53f)
         private val BLINK = Tune(2200f, 90f)
+        private val PRESS = Tune(1400f, 60f)
+        private const val PRESSED = 0.965f
     }
 }

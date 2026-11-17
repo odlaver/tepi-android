@@ -398,6 +398,12 @@ class Listener : NotificationListenerService() {
         island?.prefsChanged()
     }
 
+    // Appearance settings: restyle and preview
+    fun lookChanged() {
+        ensureIsland()
+        island?.lookChanged()
+    }
+
     fun test() {
         ensureIsland()
         island?.show(Message("tepi.test", getString(R.string.test_title), getString(R.string.test_text), appIcon(packageName), null))

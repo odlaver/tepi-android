@@ -25,7 +25,14 @@
     <string name="material_liquid">Liquid glass</string>
     <string name="material_frost">Frost</string>
     <string name="opacity">Opacity</string>
-    <string name="opacity_note">Below full opacity the status bar shows through the island.</string>
+    <string name="island_color">Island colour</string>
+    <string name="island_color_auto">Follow theme</string>
+    <string name="custom_color">Choose your own</string>
+    <string name="pick_hue">Colour</string>
+    <string name="pick_sat">Saturation</string>
+    <string name="pick_light">Brightness</string>
+    <string name="pick_done">Use</string>
+    <string name="opacity_note">Liquid glass looks best at 70 to 85% opacity. Below full opacity the status bar shows through the island. The island opens briefly whenever you change the look, so you see the result straight away.</string>
     <string name="accent">Accent</string>
     <string name="accent_mono">Monochrome</string>
     <string name="accent_cover">From the song cover</string>
@@ -127,6 +134,12 @@
     <string name="update_notify_sub">Checks GitHub once a day, shows it in the island and the notification shade</string>
     <string name="update_check">Check for updates</string>
     <string-array name="whats_new">
+        <item>Sideways and on tablets, the island floats exactly at the top centre</item>
+        <item>During fullscreen videos and games the island disappears completely and your touches reach the app. Messages wait and show together afterwards</item>
+        <item>Timers and prayer reminders ring on time even while the phone sleeps</item>
+        <item>Verification codes appear in the island with a Copy button</item>
+        <item>The island responds to your touch, and tabs slide with your finger</item>
+        <item>Lighter on the battery: no drawing while the screen is off, and the laptop link rests after two minutes</item>
         <item>The island grows out of the camera and settles back without a pop</item>
         <item>Choose how Tepi looks when idle: a pill around the camera, a battery ring, or hidden</item>
         <item>Liquid glass and Frost, opacity, theme, and accent colours, including one from the song cover</item>

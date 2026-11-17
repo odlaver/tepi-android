@@ -279,6 +279,9 @@ abstract class Page : Activity() {
 
     protected fun changed() = Listener.instance?.prefsChanged()
 
+    // Look settings: lighter, and opens the island to preview
+    protected fun looked() = Listener.instance?.lookChanged()
+
     companion object {
         private const val MAX_W = 600f
     }
