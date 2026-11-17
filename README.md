@@ -42,11 +42,14 @@ Island duduk di sekitar kamera depan dan membesar saat ada yang terjadi: lagu ya
 
 Tepi juga bisa dibuka dari tile di Quick Settings dan dari pintasan saat ikon Tepi ditahan.
 
-**Tampilan.** Saat diam, island bisa berupa pil di sekitar kamera (dengan mata Tepi kalau mau), cincin baterai di sekeliling lensa, atau sembunyi. Pilih tema gelap, terang, atau ikuti sistem; material Pekat, Kaca Liquid, atau Frost beserta kepekatannya; aksen monokrom, dari sampul lagu, atau warna pilihan; panel yang tumbuh dari kamera atau kartu mengambang, lebar, sudut, dan lama terbuka; serta gaya gerak Pegas, Halus, atau Minim. **Penyelaras kamera** menggeser island per setengah dp sampai pas dengan kamera HP.
+**Tampilan.** Saat diam, island bisa berupa pil di sekitar kamera (dengan mata Tepi kalau mau), cincin baterai di sekeliling lensa, atau sembunyi. Pilih tema gelap, terang, atau ikuti sistem; material Pekat, Kaca Liquid, atau Frost beserta kepekatannya; warna island mengikuti tema atau pilihanmu sendiri; aksen monokrom, dari sampul lagu, enam warna siap pakai, atau warna bebas yang kecerahannya disesuaikan supaya tetap terbaca; panel yang tumbuh dari kamera atau kartu mengambang, lebar, sudut, dan lama terbuka; serta gaya gerak Pegas, Halus, atau Minim. **Penyelaras kamera** menggeser island per setengah dp sampai pas dengan kamera HP.
 
 **Pop-up tidak dobel.** Pilih siapa yang memunculkan pop-up pesan: Android (Tepi cukup tampil kecil) atau Tepi (Tepi menunjukkan aplikasi mana yang pop-up Android-nya masih nyala). Pesan yang sama dari pembaruan notifikasi, riwayat percakapan, atau aplikasi kembar hanya tampil sekali.
 
+**Layar penuh dan tablet.** Selama video atau game layar penuh, island hilang sepenuhnya dan tidak menghalangi sentuhan. Hanya panggilan masuk dan izin agen dari laptop yang tetap muncul, dan pesan yang masuk selama itu tampil bersama sesudahnya. Saat HP dimiringkan dan di tablet, island melayang di tengah atas, bukan di kamera.
+
 **Lainnya:**
+- kode verifikasi dari SMS, email, dan aplikasi bank muncul di island dengan tombol Salin, kecuali saat HP terkunci;
 - Suruh Tepi: ketik "timer 5:30", "ingetin minum 30 menit lagi", atau "5 km ke mil", tanpa internet;
 - aktivitas berjalan Android 16 (ojek, antar makanan, dan lainnya) tampil sendiri;
 - mode hemat otomatis di HP RAM kecil, Android Go, atau saat penghemat baterai nyala;
@@ -70,6 +73,7 @@ Semua izin bisa dinyalakan dari layar pertama Tepi:
 | Autostart dan baterai | Xiaomi, Oppo, Vivo, dan Huawei menghentikan Tepi di latar tanpa ini |
 | Notifikasi (opsional) | Pemberitahuan versi baru di panel notifikasi |
 | Aksesibilitas (opsional) | Satu jendela di atas status bar supaya island bisa disentuh di sana, termasuk ketuk kamera |
+| Alarm tepat (otomatis) | Timer dan pengingat sholat berbunyi tepat waktu saat HP tidur. Tidak perlu dinyalakan |
 
 Android 13 ke atas mengunci akses notifikasi dan aksesibilitas untuk aplikasi dari luar Play Store. Buka kuncinya di Info aplikasi › ⋮ › Izinkan setelan terbatas.
 

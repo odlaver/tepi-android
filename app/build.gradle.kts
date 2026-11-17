@@ -13,8 +13,8 @@ android {
         applicationId = "io.github.odlaver.tepi"
         minSdk = 26
         targetSdk = 36
-        versionCode = 26
-        versionName = "2.5.1"
+        versionCode = 27
+        versionName = "2.6.0"
     }
 
     // Lite has no native code, runs anywhere
