@@ -39,10 +39,16 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
     }
 
     fun start() { main.removeCallbacks(tick); main.post(tick); armOnce() }
-    fun stop() { main.removeCallbacks(tick); main.removeCallbacks(onceRun) }
+    fun stop() {
+        main.removeCallbacks(tick); main.removeCallbacks(onceRun)
+        Wake.set(context, Wake.ONCE, 0); armPray(0)
+    }
 
     // Screen lit: catch up now
     fun wake() { main.removeCallbacks(onceRun); main.post(onceRun) }
+
+    // From an alarm: run before the wakelock drops
+    fun now() = check()
 
     fun once(at: Long, text: String) {
         val list = onces().toMutableList()
@@ -65,11 +71,12 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
     // Exact wake for the next one
     private fun armOnce() {
         main.removeCallbacks(onceRun)
-        val next = onces().minOfOrNull { it.first } ?: return
+        val next = onces().minOfOrNull { it.first }
+        Wake.set(context, Wake.ONCE, next ?: 0)
+        if (next == null) return
         main.postDelayed(onceRun, (next - System.currentTimeMillis()).coerceAtLeast(0) + 50)
     }
 
-    // Due ones wait for a lit screen
     private fun fireOnces(now: Long) {
         val all = onces()
         val (ready, later) = all.partition { it.first <= now }
@@ -99,12 +106,12 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
 
     private fun check() {
         val now = System.currentTimeMillis()
-        // Away five minutes resets eye and stretch timers
+        fireOnces(now)
+        prayers(now)
+        // Nudges need someone looking; five minutes away resets them
         if (!power.isInteractive) { if (offSince == 0L) offSince = now; return }
         if (offSince > 0 && now - offSince > 300_000L) { lastEyes = now; lastStretch = now }
         offSince = 0
-        fireOnces(now)
-        prayers(now)
         if (now < snoozeUntil || quiet()) return
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         if (prefs.bool("drink", false) && hour in 7..21 && drinkCount() < drinkGoal() &&
@@ -118,14 +125,16 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
     }
 
     private fun prayers(now: Long) {
-        val c = city() ?: return
-        if (!prefs.bool("pray", false)) return
+        val c = city()
+        if (c == null || !prefs.bool("pray", false)) { armPray(0); return }
         val cal = Calendar.getInstance()
         val day = cal.get(Calendar.DAY_OF_YEAR)
+        if (day != prayDay) { prayDay = day; warned = -1; announced = -1; times = null }
         // Same day, same city: same times
-        if (day != prayDay || c !== prayCity) { prayDay = day; prayCity = c; warned = -1; announced = -1; times = Prayer.forDay(cal, c) }
+        if (times == null || c !== prayCity) { prayCity = c; times = Prayer.forDay(cal, c) }
         val times = times ?: return
         val before = prefs.int("pray.before", 10).coerceAtLeast(0) * 60_000L
+        var next = Long.MAX_VALUE
         for (i in 0 until 6) {
             if (i == 1) continue
             if (before > 0 && warned < i && now >= times[i] - before && now < times[i]) {
@@ -134,6 +143,21 @@ class Reminders(private val context: Context, private val prefs: Prefs, private 
             if (announced < i && now >= times[i] && now < times[i] + 600_000L) {
                 announced = i; warned = i; prayAlert(i, times[i], true)
             }
+            if (before > 0 && times[i] - before > now) next = minOf(next, times[i] - before)
+            if (times[i] > now) next = minOf(next, times[i])
         }
+        // Past Isya: wake after midnight for tomorrow
+        if (next == Long.MAX_VALUE) next = (cal.clone() as Calendar).apply {
+            add(Calendar.DAY_OF_YEAR, 1); set(Calendar.HOUR_OF_DAY, 0); set(Calendar.MINUTE, 1); set(Calendar.SECOND, 0)
+        }.timeInMillis
+        armPray(next)
+    }
+
+    // Checks run every 30 s; the alarm only on change
+    private var prayAt = -1L
+    private fun armPray(at: Long) {
+        if (at == prayAt) return
+        prayAt = at
+        Wake.set(context, Wake.PRAY, at)
     }
 }

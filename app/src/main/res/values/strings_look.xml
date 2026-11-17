@@ -118,6 +118,10 @@
     <string name="tour6_title">Light by design</string>
     <string name="tour6_body">No account, no ads, no analytics. Tepi draws nothing while idle and only needs the permissions on the next screen.</string>
     <string name="update_channel">Tepi updates</string>
+    <string name="otp_code">Code %1$s</string>
+    <string name="otp_island">Verification codes in the island</string>
+    <string name="otp_island_sub">Codes from SMS, email, and banking apps appear with a Copy button. Never shown while the phone is locked</string>
+    <string name="remind_channel">Timers and reminders while the screen is off</string>
     <string name="update_tap">Tap to download the new APK</string>
     <string name="update_notify">Tell me about new versions</string>
     <string name="update_notify_sub">Checks GitHub once a day, shows it in the island and the notification shade</string>

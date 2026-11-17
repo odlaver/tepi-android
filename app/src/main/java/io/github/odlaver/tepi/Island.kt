@@ -274,9 +274,18 @@ class Island(
     }
 
     fun show(m: Message) {
+        // Fullscreen: hold, show together afterwards
+        if (fullscreen && prefs.hideFullscreen && !locked) {
+            held.removeAll { it.key == m.key || (it.app == m.app && it.title == m.title) }
+            held.add(m)
+            if (held.size > 5) held.removeAt(0)
+            return
+        }
         if (opened != null && opened !== messages) opened = null
         messages.show(m)
     }
+
+    private val held = ArrayList<Message>()
 
     fun mediaChanged() = music.changed()
 
@@ -445,7 +454,13 @@ class Island(
         refresh()
     }
 
-    private val back = Runnable { fullscreen = false; refresh() }
+    // Newest lands on top with a count of the rest
+    private val back = Runnable {
+        fullscreen = false
+        for (m in held) messages.show(m)
+        held.clear()
+        refresh()
+    }
 
     // Accessibility windows never see the status bar
     private val probe = object : View(probeCtx ?: context) {

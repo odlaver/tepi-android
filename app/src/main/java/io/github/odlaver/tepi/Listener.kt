@@ -81,7 +81,7 @@ class Listener : NotificationListenerService() {
         lyrics = Lyrics(java.io.File(cacheDir, "lyrics"))
         notes = Notes(this)
         shelf = Shelf(this)
-        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() })
+        timers = Timers(prefs, ended = { timerEnded(it) }, changed = { island?.refresh() }, alarm = { Wake.set(this, Wake.TIMER, it) })
         reminders = Reminders(this, prefs, prayAlert = { i, at, now -> prayAlert(i, at, now) }, nudge = { nudge(it) })
         reminders.due = { text, at -> onceDue(text, at) }
         suruh = Suruh(this, timers, notes, reminders)
@@ -263,6 +263,14 @@ class Listener : NotificationListenerService() {
     private fun alert(a: Alert) {
         ensureIsland()
         alerts?.show(a)
+        // Island is gone by the time the screen lights
+        if (!Power.screenOn && a.key in LATER) Bell.note(this, a.title, a.body)
+    }
+
+    // Alarm fired while asleep
+    fun woke() {
+        timers.due()
+        reminders.now()
     }
 
     private fun classSoon(s: ClassSlot) {
@@ -299,7 +307,7 @@ class Listener : NotificationListenerService() {
     }
 
     // Codes from any app; never the notification itself
-    private fun otpFrom(sbn: StatusBarNotification): String? {
+    private fun otpFrom(sbn: StatusBarNotification, island: Boolean): String? {
         val x = sbn.notification.extras
         val parts = listOf(x.getCharSequence(Notification.EXTRA_TITLE), x.getCharSequence(Notification.EXTRA_TEXT), x.getCharSequence(Notification.EXTRA_BIG_TEXT),
             lastBundle(sbn.notification)?.getCharSequence("text"), sbn.notification.tickerText).mapNotNull { it?.toString() }.distinct()
@@ -308,8 +316,24 @@ class Listener : NotificationListenerService() {
         codes.entries.removeAll { now - it.value > 120_000 }
         if (codes.containsKey(code)) return code
         codes[code] = now
-        pc.otp(appLabel(sbn.packageName), code)
+        val app = appLabel(sbn.packageName)
+        if (pc.linked && pc.sendOtp) pc.otp(app, code)
+        if (island && prefs.notifs) offerCode(app, code)
         return code
+    }
+
+    // Never on the lock screen, never when content is hidden
+    private fun offerCode(app: String, code: String) {
+        val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+        if (!prefs.bool("otp.island", true) || !prefs.notifContent || locked) return
+        val copy = Action(getString(R.string.copy), primary = true, icon = Icon.Copy) {
+            val cm = getSystemService(android.content.ClipboardManager::class.java)
+            val clip = android.content.ClipData.newPlainText(app, code)
+            // Keep the code out of keyboard clipboard history
+            clip.description.extras = android.os.PersistableBundle().apply { putBoolean("android.content.extra.IS_SENSITIVE", true) }
+            try { cm.setPrimaryClip(clip) } catch (_: Exception) { }
+        }
+        alert(Alert("otp", getString(R.string.otp_code, code), app, Glyph.Check, listOf(copy), 20_000))
     }
 
     // Messages to the laptop's Pesan
@@ -397,15 +421,18 @@ class Listener : NotificationListenerService() {
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap?) {
         if (sbn.packageName != packageName) AppFilter.saw(prefs, sbn.packageName)
         val own = sbn.packageName == packageName
-        val code = if (!own && pc.linked && pc.sendOtp) otpFrom(sbn) else null
+        val allowed = AppFilter.allowed(prefs, sbn.packageName)
+        val code = if (!own) otpFrom(sbn, allowed) else null
         // User turned this app off
-        if (!AppFilter.allowed(prefs, sbn.packageName)) return
+        if (!allowed) return
         live.posted(sbn)
-        if (!own && code == null && pc.linked && pc.online) forward(sbn, rankingMap)
+        if (!own && (code == null || !pc.sendOtp) && pc.linked && pc.online) forward(sbn, rankingMap)
         val isl = island ?: return
         if (!prefs.notifs) return
         val n = sbn.notification
         if (sbn.packageName == packageName || sbn.isOngoing || !isMessage(n)) return
+        // The code card already covers this message
+        if (code != null && prefs.bool("otp.island", true) && prefs.notifContent && !getSystemService(KeyguardManager::class.java).isKeyguardLocked) return
         if (n.flags and Notification.FLAG_GROUP_SUMMARY != 0) return
         val rank = rankingMap?.let { m -> Ranking().takeIf { m.getRanking(sbn.key, it) } }
         if (rank != null && rank.importance < NotificationManager.IMPORTANCE_DEFAULT) return
@@ -504,6 +531,8 @@ class Listener : NotificationListenerService() {
     companion object {
         var instance: Listener? = null
             private set
+
+        private val LATER = setOf("timer", "pray", "once")
 
         // Translation result into the island
         fun translated(src: String, out: String, pair: String): Boolean {

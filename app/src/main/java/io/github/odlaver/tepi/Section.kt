@@ -74,6 +74,7 @@ class Section : Page() {
         row(m, getString(R.string.apps), getString(R.string.apps_row_sub), icon = Icon.Layers) { startActivity(Intent(this, Apps::class.java)) }
         toggle(m, getString(R.string.notifs), getString(R.string.notifs_sub), prefs.notifs, icon = Icon.Chat) { prefs.notifs = it }
         toggle(m, getString(R.string.notif_content), getString(R.string.notif_content_sub), prefs.notifContent, icon = Icon.Eye) { prefs.notifContent = it }
+        toggle(m, getString(R.string.otp_island), getString(R.string.otp_island_sub), prefs.bool("otp.island", true), icon = Icon.Copy) { prefs.set("otp.island", it) }
         // One pop-up per message
         choice(m, getString(R.string.banner_owner), listOf(Banners.SYSTEM to getString(R.string.banner_from_android), Banners.TEPI to getString(R.string.banner_from_tepi)),
             Banners.owner(prefs), Icon.Bell) { prefs.set("banner.owner", it) }

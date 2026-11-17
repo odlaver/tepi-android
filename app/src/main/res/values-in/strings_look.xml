@@ -118,6 +118,10 @@
     <string name="tour6_title">Ringan sejak awal</string>
     <string name="tour6_body">Tanpa akun, iklan, atau analitik. Tepi tidak menggambar apa pun saat diam dan hanya butuh izin di layar berikutnya.</string>
     <string name="update_channel">Pembaruan Tepi</string>
+    <string name="otp_code">Kode %1$s</string>
+    <string name="otp_island">Kode verifikasi di island</string>
+    <string name="otp_island_sub">Kode dari SMS, email, dan aplikasi bank muncul dengan tombol Salin. Tidak tampil saat HP terkunci</string>
+    <string name="remind_channel">Timer dan pengingat saat layar mati</string>
     <string name="update_tap">Ketuk untuk mengunduh APK baru</string>
     <string name="update_notify">Beri tahu versi baru</string>
     <string name="update_notify_sub">Cek GitHub sekali sehari, tampil di island dan panel notifikasi</string>

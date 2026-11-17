@@ -4,7 +4,7 @@ import android.os.Handler
 import android.os.Looper
 
 // Focus, break, countdown, stopwatch; port of src/Timers.cs
-class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, private val changed: () -> Unit) {
+class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, private val changed: () -> Unit, private val alarm: (Long) -> Unit = {}) {
     enum class Kind { Focus, Break, Countdown, Stopwatch }
 
     private val main = Handler(Looper.getMainLooper())
@@ -74,6 +74,7 @@ class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, privat
             pausedValue = if (k == Kind.Stopwatch) elapsed() else remaining()
             paused = true
             main.removeCallbacks(ring)
+            alarm(0)
         } else {
             if (k == Kind.Stopwatch) startAt = now() - pausedValue
             else { endAt = now() + pausedValue; arm() }
@@ -101,6 +102,7 @@ class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, privat
 
     fun stop(notify: Boolean = true) {
         main.removeCallbacks(ring)
+        alarm(0)
         kind = null
         paused = false
         laps.clear()
@@ -111,6 +113,15 @@ class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, privat
     private fun arm() {
         main.removeCallbacks(ring)
         main.postDelayed(ring, (endAt - now()).coerceAtLeast(0))
+        alarm(endAt)
+    }
+
+    // Alarm woke the phone: ring if it is time
+    fun due() {
+        val k = kind ?: return
+        if (k == Kind.Stopwatch || paused || endAt > now()) return
+        main.removeCallbacks(ring)
+        finish()
     }
 
     // Focus rolls into break
@@ -121,6 +132,7 @@ class Timers(private val prefs: Prefs, private val ended: (Kind) -> Unit, privat
             start(Kind.Break, brk * 60_000L)
         } else {
             kind = null
+            alarm(0)
             save()
             changed()
         }
